@@ -7,7 +7,6 @@ SIM_DIR     = ./sim
 DPI_DIR     = ./dpi_mem
 TEST_DIR    = ./tests
 OBJ_DIR     = obj_dir
-
 # ==================================================
 #  工具链配置
 # ==================================================
@@ -16,14 +15,14 @@ RISCV_PREFIX = riscv64-linux-gnu
 CC      = $(RISCV_PREFIX)-gcc
 OBJCOPY = $(RISCV_PREFIX)-objcopy
 CFLAGS = -march=rv32e -mabi=ilp32e -O2 -nostdlib -Wall -fno-pie -ffreestanding
-LDFLAGS = -march=rv32e -mabi=ilp32e -nostdlib -Wl,-Ttext=0x0 -Wl,-e_start -Wl,--build-id=none -Wl,-no-pie -Wl,-N
+LDFLAGS = -march=rv32e -mabi=ilp32e -nostdlib -Wl,-T,tests/link.ld -Wl,--build-id=none -Wl,-no-pie -Wl,-N
 
 
 # Verilator 仿真工具
 VERILATOR = verilator
-VERILATOR_FLAGS = --cc --exe --build --trace --dpi-header
-VERILATOR_FLAGS += -CFLAGS "-I$(DPI_DIR)"
-VERILATOR_FLAGS += -Wno-fatal
+VERILATOR_FLAGS = --cc --exe --build --trace
+VERILATOR_FLAGS += -CFLAGS "-I../$(DPI_DIR)"
+VERILATOR_FLAGS += -Wall -Wno-fatal
 VERILATOR_FLAGS += --top-module $(TOP_MODULE)
 VERILATOR_FLAGS += -Mdir $(OBJ_DIR)
 
@@ -33,19 +32,20 @@ VERILATOR_FLAGS += -Mdir $(OBJ_DIR)
 # CPU 核心 RTL
 RTL_SRCS = \
 	$(RTL_DIR)/rv32e_scpu.v \
-	$(RTL_DIR)/pc_reg.v \
-	$(RTL_DIR)/id.v \
-	$(RTL_DIR)/ex.v \
-	$(RTL_DIR)/regfile.v
+	$(RTL_DIR)/imm_gen.v \
+	$(RTL_DIR)/control.v \
+	$(RTL_DIR)/alu_control.v \
+	$(RTL_DIR)/regfile.v \
+	$(RTL_DIR)/alu.v
 
 # 仿真模型 SV
 SIM_SV_SRCS = \
-	$(SIM_DIR)/inst_mem.sv \
-	$(SIM_DIR)/data_mem.sv
+	$(SIM_DIR)/inst_mem.sv #\
+	#$(SIM_DIR)/data_mem.sv
 
 # DPI 内存模型 + 仿真主入口
-DPI_C_SRCS = $(DPI_DIR)/pmem.c
-SIM_MAIN = $(SIM_DIR)/sim_main.cpp
+DPI_C_SRCS = $(DPI_DIR)/pmem.cpp
+SIM_MAIN = $(SIM_DIR)/tb_main.cpp
 
 # 自动扫描测试用例
 TEST_C_SRCS = $(wildcard $(TEST_DIR)/*.c)
@@ -77,7 +77,7 @@ $(TEST_DIR)/%.hex: $(TEST_DIR)/%.c
 	rm -f $(@:.hex=.o) $(@:.hex=.elf)
 
 # 运行仿真
-HEX ?= test_addi.hex
+HEX ?= dummy.hex
 WAVE ?= 0
 
 run: $(TARGET)
@@ -86,6 +86,9 @@ run: $(TARGET)
 	else \
 		$(TARGET) $(TEST_DIR)/$(HEX); \
 	fi
+
+wave:
+	gtkwave wave.vcd
 
 # 清理
 clean:

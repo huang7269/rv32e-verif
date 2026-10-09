@@ -1,8 +1,7 @@
 
 void _start(){
-  volatile int a = 10;
-  volatile int b = 20;
-  volatile int c = 30;
-
+  __asm__ volatile ("addi x10, x0, 1");
+  __asm__ volatile ("addi x10, x10, 2");
+  __asm__ volatile ("addi x10, x10, 3");
   __asm__ volatile("ebreak");
 }

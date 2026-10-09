@@ -2,10 +2,107 @@
 
 module rv32e_scpu(
     input  wire clock,
-    input  wire reset,
+    input  wire reset_n,
+    output wire [31:0] pc,
+    output wire [31:0] inst,
     output wire halt
 );
-    
 
+// ----------取指令----------
+    reg  [31:0] pc_reg;
+    wire [31:0] pc_next;
+    wire [31:0] inst_w;
+
+    inst_mem u_inst_mem(
+        .inst_addr_i   (pc_reg),
+        .inst_data_o   (inst_w)
+    );
+
+// ----------指令字段----------
+    wire [6:0] fun7   = inst_w[31:25];
+    wire [2:0] fun3   = inst_w[14:12];
+    wire [4:0] rs1    = inst_w[19:15];
+    wire [4:0] rs2    = inst_w[24:20];
+    wire [4:0] rd     = inst_w[11:7];
+    wire [6:0] opcode = inst_w[6:0];
+
+// ----------控制----------
+    wire reg_write,mem_write,mem_read;
+    wire [1:0] alu_op;
+    wire [2:0] imm_sel;
+
+    control u_control (
+        .opcode      (opcode),
+        .reg_write   (reg_write),
+        .mem_write   (mem_write),
+        .mem_read    (mem_read),
+        .alu_op      (alu_op),
+        .imm_sel     (imm_sel)
+    );
+
+// ----------立即数----------
+    wire [31:0] imm;
+
+    imm_gen u_imm_gen(
+        .inst    (inst_w),
+        .imm_sel (imm_sel),
+        .imm     (imm)
+    );
+
+// ----------寄存器堆----------
+    wire [31:0] rdata_1,rdata_2,wdata;
+
+    regfile u_regfile(
+        .clock      (clock     ),
+        .reg_write  (reg_write ),
+        .rs1        (rs1       ),
+        .rs2        (rs2       ),
+        .rd         (rd        ),
+        .wdata      (wdata     ),
+        .rdata_1    (rdata_1   ),
+        .rdata_2    (rdata_2   )
+    );
+
+// ----------运算器与控制----------
+    wire [3:0] alu_ctrl;
+    
+    alu_control u_alu_control(
+        .alu_op   	(alu_op    ),
+        .fun3     	(fun3      ),
+        .fun7     	(fun7      ),
+        .alu_ctrl 	(alu_ctrl  )
+    );
+    
+    wire [31:0] rd_1,rd_2,alu_result;
+    assign rd_1 = rdata_1;
+    assign rd_2 = (alu_op == 2'b01) ? imm : rdata_2; 
+
+    alu u_alu(
+        .rd_1       (rd_1      ),
+        .rd_2       (rd_2      ),
+        .alu_ctrl   (alu_ctrl  ),
+        .alu_result (alu_result)
+    );
+
+// ----------写回-----------
+    assign wdata = alu_result;
+
+// ----------分支----------
+    wire [31:0] pc_plus = pc_reg + 32'd4;
+    assign pc_next = pc_plus;
+
+    always @(posedge clock or negedge reset_n) begin
+        if(!reset_n) begin
+            pc_reg <= 32'h00000000;
+        end
+        else begin
+            pc_reg <= pc_next;
+        end
+    end
+
+// ----------ebreak检测----------
+    assign pc = pc_reg;
+    assign inst = inst_w;
+    assign halt = (inst_w == 32'h00100073);
 
 endmodule

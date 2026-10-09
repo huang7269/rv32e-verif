@@ -46,19 +46,20 @@ int main(int argc, char **argv) {
     int cycle_count = 0;
     int ret_code = 0;             // 返回码: 0=正常停机 1=加载失败 2=超时
 
-    // ========== 5. 复位序列（高有效） ==========
+    // ========== 5. 复位序列（低有效） ==========
     top->clock = 0;
-    top->reset = 1;
-    // 先跑2个完整周期的复位
-    for (int i = 0; i < 4; i++) {
+    top->reset_n = 0;
+    // 先跑1个完整周期的复位
+    for (int i = 0; i < 2; i++) {
         top->clock = !top->clock;
         top->eval();
         if (tfp) tfp->dump(i * clk_half);
     }
-    top->reset = 0; // 低半周期释放复位，避免时钟沿亚稳态
+    top->reset_n = 1; // 低半周期释放复位，避免时钟沿亚稳态
 
     // ========== 6. 主仿真循环 ==========
     while (!Verilated::gotFinish()) {
+        printf("cycle=%3d | pc=0x%08x | inst=0x%08x\n", cycle_count, top->pc, top->inst);
         // 检测ebreak触发的halt信号，自动停机
         if (top->halt) {
             printf("[INFO] 遇到EBREAK，仿真结束，总周期数: %d\n", cycle_count);
