@@ -7,6 +7,7 @@ RV32E 单周期 CPU 的仿真验证项目。
 - ✅ Verilator + C++ 仿真验证环境
 - ✅ DPI-C 内存模型(pmem),支持 verilog-hex 格式程序加载
 - ✅ 测试程序 C 交叉编译流程(riscv64-linux-gnu-gcc → hex)
+- ✅ ebreak 后寄存器比对 checker(PASS/FAIL 判定 + 退出码)
 - ✅ 已实现指令:addi、ebreak(详见[指令支持进度表](#指令支持进度表))
 - 🚧 差分测试(difftest)与 C++ 参考模型 —— 计划中
 - 🚧 功能覆盖率收集 —— 计划中
@@ -34,10 +35,14 @@ RV32E 单周期 CPU 的仿真验证项目。
                   仿真日志 + wave.vcd
                           │
                           ▼
-        (计划中) C++ 参考模型(ISS)逐指令比对 regfile
+              checker:ebreak 后比对 regfile
+                          │
+                          ▼
+        (计划中) C++ 参考模型(ISS)逐指令比对(difftest)
 ```
 
 - **tb_main.cpp**:仿真主入口,驱动时钟/复位,逐周期打印 pc/inst,检测 ebreak 停机
+- **checker**:ebreak 后读取 DUT 内部 regfile,与期望值比对,FAIL 时退出码为 3
 - **pmem**:统一 4MB 内存模型,指令与数据共用(与 tests/link.ld 的内存布局对应)
 - **tests/\*.c**:测试程序,交叉编译为 hex 后加载进 pmem
 
@@ -59,6 +64,9 @@ rv32e-verif/
 ├── dpi_mem/           # DPI 内存模型(C++)
 │   ├── pmem.h
 │   └── pmem.cpp
+├── checker/           # 结果比对(期望值 .exp 文件化计划中)
+│   ├── checker.h
+│   └── checker.cpp
 ├── tests/             # 测试程序(C → hex)
 │   ├── dummy.c        #   addi + ebreak 冒烟测试
 │   └── link.ld        #   链接脚本:IMEM 0x0 / DMEM 0x200000
@@ -90,14 +98,14 @@ cycle=  1 | pc=0x00000004 | inst=0x00250513
 cycle=  2 | pc=0x00000008 | inst=0x00350513
 cycle=  3 | pc=0x0000000c | inst=0x00100073
 [INFO] 遇到EBREAK，仿真结束，总周期数: 3
-=== 仿真正常结束 ===
+simulation succeeded!
 ```
 
 ### 查看波形
 
 ```bash
-make run    # 运行后生成 wave.vcd
-make wave   # 打开 GTKWave
+make run WAVE=1   # 运行并生成 wave.vcd(默认关闭波形)
+make wave         # 打开 GTKWave
 ```
 
 常用 Makefile 目标:
@@ -165,9 +173,8 @@ make wave   # 打开 GTKWave
 
 ## 已知限制
 
-- 仿真环境目前只检测 ebreak 停机,**尚未比对寄存器结果**(checker 第 1 周实现)
-- 波形开关参数(+wave/--no-wave)尚未统一,波形默认开启
-- pmem 地址边界检查待完善(`>` 应改为 `>=`)
+- checker 期望值目前硬编码在 checker.cpp 中,计划迁移到 `.exp` 文件(每测试一个期望文件,换测试免重新编译)
+- 期望文件与负向用例(超时保护、缺 .exp 报错)计划补充
 
 ## Roadmap
 

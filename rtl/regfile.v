@@ -14,7 +14,7 @@ module regfile #(
     output wire [DATA_W-1:0] rdata_1,
     output wire [DATA_W-1:0] rdata_2
 );
-    reg [DATA_W-1:0] regfiles [0:REG_N-1];
+    reg [DATA_W-1:0] regfiles [0:REG_N-1] /*verilator public*/;
 
     assign rdata_1 = (rs1 == 5'b000000) ? {DATA_W{1'b0}}:
                      (rs1 < REG_N) ? regfiles[rs1] : {DATA_W{1'b0}};

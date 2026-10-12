@@ -5,6 +5,7 @@ TOP_MODULE  = rv32e_scpu
 RTL_DIR     = ./rtl
 SIM_DIR     = ./sim
 DPI_DIR     = ./dpi_mem
+CHECKER_DIR = ./checker
 TEST_DIR    = ./tests
 OBJ_DIR     = obj_dir
 # ==================================================
@@ -22,6 +23,7 @@ LDFLAGS = -march=rv32e -mabi=ilp32e -nostdlib -Wl,-T,tests/link.ld -Wl,--build-i
 VERILATOR = verilator
 VERILATOR_FLAGS = --cc --exe --build --trace
 VERILATOR_FLAGS += -CFLAGS "-I../$(DPI_DIR)"
+VERILATOR_FLAGS += -CFLAGS "-I../$(CHECKER_DIR)"
 VERILATOR_FLAGS += -Wall -Wno-fatal
 VERILATOR_FLAGS += --top-module $(TOP_MODULE)
 VERILATOR_FLAGS += -Mdir $(OBJ_DIR)
@@ -46,7 +48,7 @@ SIM_SV_SRCS = \
 # DPI 内存模型 + 仿真主入口
 DPI_C_SRCS = $(DPI_DIR)/pmem.cpp
 SIM_MAIN = $(SIM_DIR)/tb_main.cpp
-
+CHECKER_C_SRCS = $(CHECKER_DIR)/checker.cpp
 # 自动扫描测试用例
 TEST_C_SRCS = $(wildcard $(TEST_DIR)/*.c)
 TEST_HEXS = $(TEST_C_SRCS:.c=.hex)
@@ -61,9 +63,9 @@ TARGET = $(OBJ_DIR)/V$(TOP_MODULE)
 all: $(TARGET)
 
 # 编译仿真工程
-$(TARGET): $(RTL_SRCS) $(SIM_SV_SRCS) $(DPI_C_SRCS) $(SIM_MAIN)
+$(TARGET): $(RTL_SRCS) $(SIM_SV_SRCS) $(DPI_C_SRCS) $(CHECKER_C_SRCS) $(SIM_MAIN)
 	$(VERILATOR) $(VERILATOR_FLAGS) \
-		$(RTL_SRCS) $(SIM_SV_SRCS) $(DPI_C_SRCS) $(SIM_MAIN)
+		$(RTL_SRCS) $(SIM_SV_SRCS) $(DPI_C_SRCS) $(CHECKER_C_SRCS) $(SIM_MAIN)
 
 # 批量生成所有测试 hex
 hex: $(TEST_HEXS)
@@ -99,4 +101,4 @@ clean_test:
 
 clean_all: clean clean_test
 
-.PHONY: all hex run clean clean_test clean_all
+.PHONY: all hex run wave clean clean_test clean_all
