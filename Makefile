@@ -80,13 +80,14 @@ $(TEST_DIR)/%.hex: $(TEST_DIR)/%.c
 
 # 运行仿真
 HEX ?= dummy.hex
+EXP ?= $(HEX:.hex=.exp)
 WAVE ?= 0
 
 run: $(TARGET)
 	@if [ $(WAVE) -eq 1 ]; then \
-		$(TARGET) $(TEST_DIR)/$(HEX) +wave; \
+		$(TARGET) $(TEST_DIR)/$(HEX) $(TEST_DIR)/$(EXP) +wave; \
 	else \
-		$(TARGET) $(TEST_DIR)/$(HEX); \
+		$(TARGET) $(TEST_DIR)/$(HEX) $(TEST_DIR)/$(EXP); \
 	fi
 
 wave:

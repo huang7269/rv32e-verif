@@ -8,9 +8,10 @@
 #include "Vrv32e_scpu_regfile.h"
 
 struct ExpReg{
-    uint32_t regs[16] = {0};
+    uint32_t regs[16];
 };
 
+int read_exp(const char *filename);
 int diff_reg(Vrv32e_scpu* top);
 
 #endif

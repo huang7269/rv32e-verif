@@ -10,20 +10,21 @@
 
 int main(int argc, char **argv) {
     // ========== 1. 参数解析 ==========
-    if (argc < 2) {
-        printf("用法: %s <程序.hex> [+wave|--no-wave]\n", argv[0]);
+    if (argc < 3) {
+        printf("used: %s <name.hex> <name.exp> [+wave|--no-wave]\n", argv[0]);
         return 1;
     }
     const char* hex_file = argv[1];
+    const char* exp_file = argv[2];
     bool enable_wave = false;
-    for (int i = 2; i < argc; i++) {
+    for (int i = 3; i < argc; i++) {
         if (strcmp(argv[i], "+wave") == 0) enable_wave = true;
         if (strcmp(argv[i], "--no-wave") == 0) enable_wave = false;
     }
 
     // ========== 2. 初始化内存，加载测试程序 ==========
     if (pmem_init(hex_file) != 0) {
-        printf("[ERROR] 加载程序失败: %s\n", hex_file);
+        printf("[ERROR] load hexfile failed: %s\n", hex_file);
         return 1;
     }
 
@@ -67,7 +68,10 @@ int main(int argc, char **argv) {
         printf("cycle=%3d | pc=0x%08x | inst=0x%08x\n", cycle_count, top->pc, top->inst);
         // 检测ebreak触发的halt信号，自动停机
         if (top->halt) {
-            printf("[INFO] 遇到EBREAK，仿真结束，总周期数: %d\n", cycle_count);
+            printf("[INFO] enter EBREAK,clock cycle: %d\n", cycle_count);
+            int n = read_exp(exp_file);
+            if(n < 0) return 4;
+
             mis_reg_num = diff_reg(top);
             if(mis_reg_num == 0) ret_code = 0;
             else ret_code = 3;
@@ -76,7 +80,7 @@ int main(int argc, char **argv) {
 
         // 超时检测
         if (cycle_count >= max_cycles) {
-            printf("[WARN] 仿真超时 (%d周期)，程序可能死循环\n", max_cycles);
+            printf("[WARNNING] simulation overtime (%d),program may enter dead loop\n", max_cycles);
             ret_code = 2;
             break;
         }

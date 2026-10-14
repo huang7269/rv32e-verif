@@ -3,26 +3,36 @@
 #include <iostream>
 #include "checker.h"
 
-const ExpReg exp_reg{
-    .regs = {
-        0x00000000, // x0
-        0x00000000, // x1
-        0x00000000, // x2
-        0x00000000, // x3
-        0x00000000, // x4
-        0x00000000, // x5
-        0x00000000, // x6
-        0x00000000, // x7
-        0x00000000, // x8
-        0x00000000, // x9
-        0x00000006, // x10
-        0x00000000, // x11
-        0x00000000, // x12
-        0x00000000, // x13
-        0x00000000, // x14
-        0x00000000  // x15
-    }
+ExpReg exp_reg{
+    .regs = {0}
 };
+
+int read_exp(const char *filename){
+    FILE *fp = fopen(filename,"r");
+    if(!fp){
+        printf("[ERROR] fopen %s failed!\n",filename);
+        return -1;
+    }
+
+    char line[128];
+    char reg_name[16];
+    uint32_t val;
+    while(fgets(line,sizeof(line),fp)){
+        if(sscanf(line,"%s %x",reg_name,&val) != 2){
+            continue;
+        }
+
+        if(reg_name[0] == 'x'){
+            int idx = atoi(reg_name + 1);
+            if(idx >= 0 && idx < 16){
+                exp_reg.regs[idx] = val;
+            }
+        }
+    }
+    fclose(fp);
+
+    return 0;
+}
 
 int diff_reg(Vrv32e_scpu* top){
     int num = 0;
