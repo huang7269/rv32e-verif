@@ -73,15 +73,15 @@ module rv32e_scpu(
         .alu_ctrl 	(alu_ctrl  )
     );
     
-    wire [31:0] rd_1,rd_2,alu_result;
-    assign rd_1 = rdata_1;
-    assign rd_2 = (alu_op == 2'b01) ? imm : rdata_2; 
+    wire [31:0] operand_a,operand_b,alu_result;
+    assign operand_a = rdata_1;
+    assign operand_b = (alu_op == 2'b01) ? imm : rdata_2; 
 
     alu u_alu(
-        .rd_1       (rd_1      ),
-        .rd_2       (rd_2      ),
-        .alu_ctrl   (alu_ctrl  ),
-        .alu_result (alu_result)
+        .a          (operand_a      ),
+        .b          (operand_b      ),
+        .alu_ctrl   (alu_ctrl       ),
+        .alu_result (alu_result     )
     );
 
 // ----------写回-----------

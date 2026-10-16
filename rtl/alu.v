@@ -1,8 +1,8 @@
 `timescale 1ns/1ps
 
 module alu(
-    input  reg [31:0] rd_1,
-    input  reg [31:0] rd_2,
+    input  reg [31:0] a,
+    input  reg [31:0] b,
     input  reg [3:0]  alu_ctrl,
     output reg [31:0] alu_result   
 );
@@ -19,8 +19,16 @@ module alu(
 
     always @(*) begin
         case(alu_ctrl)
-            OP_ADD:  alu_result = rd_1 + rd_2;
-            OP_SUB:  alu_result = rd_1 - rd_2;
+            OP_ADD:  alu_result = a + b;
+            OP_SUB:  alu_result = a - b;
+            OP_SLL:  alu_result = a << b[4:0];
+            OP_SLT:  alu_result = ($signed(a) < $signed(b)) ? 32'h1 : 32'h0;
+            OP_SLTU: alu_result = (a < b) ? 32'h1 : 32'h0;
+            OP_XOR:  alu_result = a ^ b;
+            OP_SRL:  alu_result = a >> b[4:0];
+            OP_SRA:  alu_result = $signed(a) >>> b[4:0];
+            OP_OR:   alu_result = a | b;
+            OP_AND:  alu_result = a & b;
             default: alu_result = 32'd0;
         endcase
     end 

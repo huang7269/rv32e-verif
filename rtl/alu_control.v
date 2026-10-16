@@ -24,6 +24,18 @@ module alu_control(
                     3'b000: alu_ctrl = OP_ADD;    //addi
                 endcase
             end
+            2'b10:begin                  //R型
+                case(fun3)
+                    3'b000: alu_ctrl = (fun7 == 7'b0000000) ? OP_ADD : OP_SUB;
+                    3'b001: alu_ctrl = OP_SLL;
+                    3'b010: alu_ctrl = OP_SLT;
+                    3'b011: alu_ctrl = OP_SLTU;
+                    3'b100: alu_ctrl = OP_XOR;
+                    3'b101: alu_ctrl = (fun7 == 7'b0000000) ? OP_SRL : OP_SRA;
+                    3'b110: alu_ctrl = OP_OR;
+                    3'b111: alu_ctrl = OP_AND;
+                endcase
+            end
             default: alu_ctrl = OP_ADD;
         endcase
     end

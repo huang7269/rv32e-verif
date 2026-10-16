@@ -24,6 +24,8 @@ module control(
         case(opcode)
             OP_R: begin
                 reg_write = 1'b1;
+                mem_write = 1'b0;
+                mem_read  = 1'b0;
                 alu_op    = 2'b10;
             end
             OP_I: begin
@@ -31,6 +33,7 @@ module control(
                 imm_sel = IMM_I;
                 alu_op = 2'b01;
             end
+            default: ;
         endcase
     end
 endmodule

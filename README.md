@@ -8,7 +8,7 @@ RV32E 单周期 CPU 的仿真验证项目。
 - ✅ DPI-C 内存模型(pmem),支持 verilog-hex 格式程序加载
 - ✅ 测试程序 C 交叉编译流程(riscv64-linux-gnu-gcc → hex)
 - ✅ ebreak 后寄存器比对 checker(.exp 期望文件驱动,PASS/FAIL 判定 + 退出码)
-- ✅ 已实现指令:addi、ebreak(详见[指令支持进度表](#指令支持进度表))
+- ✅ 已实现指令:R 型全部 10 条、addi、ebreak(详见[指令支持进度表](#指令支持进度表))
 - 🚧 差分测试(difftest)与 C++ 参考模型 —— 计划中
 - 🚧 功能覆盖率收集 —— 计划中
 - 🚧 UVM 验证环境 —— 计划中
@@ -70,6 +70,8 @@ rv32e-verif/
 ├── tests/             # 测试程序(C → hex,同名 .exp 为期望值)
 │   ├── dummy.c        #   addi + ebreak 冒烟测试
 │   ├── dummy.exp      #   期望值:x10 0x6
+│   ├── tests_r.c      #   R 型 10 条指令测试
+│   ├── tests_r.exp    #   期望值:x1~x13
 │   └── link.ld        #   链接脚本:IMEM 0x0 / DMEM 0x200000
 ├── Makefile
 └── ic_verif_study.md  # 12 周学习计划
@@ -94,13 +96,11 @@ make run    # 运行 tests/dummy.hex
 预期输出(dummy.c 依次执行 3 条 addi 后 ebreak):
 
 ```
-cycle=  0 | pc=0x00000000 | inst=0x00100513
-cycle=  1 | pc=0x00000004 | inst=0x00250513
-cycle=  2 | pc=0x00000008 | inst=0x00350513
-cycle=  3 | pc=0x0000000c | inst=0x00100073
 [INFO] enter EBREAK,clock cycle: 3
 simulation succeeded!
 ```
+
+(逐周期 pc/inst 打印已默认关闭,调试时可在 tb_main.cpp 中打开)
 
 ### 期望文件(.exp)
 
@@ -139,7 +139,7 @@ make wave         # 打开 GTKWave
 |---|---|---|---|
 | I 型 | addi | ✅ 完成 | tests/dummy.c |
 | 系统 | ebreak | ✅ 完成 | tests/dummy.c |
-| R 型 | add / sub / sll / slt / sltu / xor / srl / sra / or / and | 🔲 计划(第 2 周) | — |
+| R 型 | add / sub / sll / slt / sltu / xor / srl / sra / or / and | ✅ 完成 | tests/tests_r.c |
 | I 型 | slti / sltiu / xori / ori / andi / slli / srli / srai | 🔲 计划(第 3 周) | — |
 | U 型 | lui / auipc | 🔲 计划(第 4 周) | — |
 | 分支 | beq / bne / blt / bge / bltu / bgeu | 🔲 计划(第 4 周) | — |
@@ -201,15 +201,16 @@ make wave         # 打开 GTKWave
 
 完整 12 周计划见 [ic_verif_study.md](ic_verif_study.md),摘要:
 
-| 周次 | 里程碑 |
-|---|---|
-| 第 1 周 | 修复环境问题,建立 checker 闭环 |
-| 第 2~3 周 | R 型 / I 型指令 + 逐指令测试 |
-| 第 4~5 周 | U 型 / 分支跳转 / load-store |
-| 第 6~7 周 | C++ 参考模型 + difftest + 回归 |
-| 第 8 周 | 功能覆盖率收集 |
-| 第 9~11 周 | UVM 验证环境(与 C++ 环境共用参考模型) |
-| 第 12 周 | 面试材料整理 |
+| 周次 | 里程碑 | 状态 |
+|---|---|---|
+| 第 1 周 | 修复环境问题,建立 checker 闭环 | ✅ 完成 |
+| 第 2 周 | R 型指令 + 逐指令测试 | ✅ 完成 |
+| 第 3 周 | I 型指令 + 逐指令测试 | 🔄 进行中 |
+| 第 4~5 周 | U 型 / 分支跳转 / load-store | — |
+| 第 6~7 周 | C++ 参考模型 + difftest + 回归 | — |
+| 第 8 周 | 功能覆盖率收集 | — |
+| 第 9~11 周 | UVM 验证环境(与 C++ 环境共用参考模型) | — |
+| 第 12 周 | 面试材料整理 | — |
 
 ## 参考资料
 

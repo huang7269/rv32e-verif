@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
 
     // ========== 6. 主仿真循环 ==========
     while (!Verilated::gotFinish()) {
-        printf("cycle=%3d | pc=0x%08x | inst=0x%08x\n", cycle_count, top->pc, top->inst);
+        //printf("cycle=%3d | pc=0x%08x | inst=0x%08x\n", cycle_count, top->pc, top->inst);
         // 检测ebreak触发的halt信号，自动停机
         if (top->halt) {
             printf("[INFO] enter EBREAK,clock cycle: %d\n", cycle_count);
