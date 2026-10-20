@@ -32,13 +32,7 @@ VERILATOR_FLAGS += -Mdir $(OBJ_DIR)
 #  源文件列表
 # ==================================================
 # CPU 核心 RTL
-RTL_SRCS = \
-	$(RTL_DIR)/rv32e_scpu.v \
-	$(RTL_DIR)/imm_gen.v \
-	$(RTL_DIR)/control.v \
-	$(RTL_DIR)/alu_control.v \
-	$(RTL_DIR)/regfile.v \
-	$(RTL_DIR)/alu.v
+RTL_SRCS := $(wildcard $(RTL_DIR)/*.v)
 
 # 仿真模型 SV
 SIM_SV_SRCS = \

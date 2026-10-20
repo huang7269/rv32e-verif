@@ -19,7 +19,8 @@ module alu_control(
 
     always @(*) begin
         case(alu_op)
-            2'b01:begin                  //I型
+            2'b00: alu_ctrl = OP_ADD;             //lui
+            2'b01:begin                           //I型
                 case(fun3)
                     3'b000: alu_ctrl = OP_ADD;    //addi
                     3'b010: alu_ctrl = OP_SLT;    //slti

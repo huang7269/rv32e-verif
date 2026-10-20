@@ -29,6 +29,9 @@ module rv32e_scpu(
 // ----------控制----------
     wire reg_write,mem_write,mem_read;
     wire [1:0] alu_op;
+    wire [1:0] alu_src_a;
+    wire alu_src_b;
+    wire branch;
     wire [2:0] imm_sel;
 
     control u_control (
@@ -36,7 +39,10 @@ module rv32e_scpu(
         .reg_write   (reg_write),
         .mem_write   (mem_write),
         .mem_read    (mem_read),
+        .branch      (branch),
         .alu_op      (alu_op),
+        .alu_src_a   (alu_src_a),
+        .alu_src_b   (alu_src_b),
         .imm_sel     (imm_sel)
     );
 
@@ -49,6 +55,15 @@ module rv32e_scpu(
         .imm     (imm)
     );
 
+// ----------分支单元----------
+    wire branch_taken;
+
+    branch_unit u_branch_unit(
+        .rs1          (rdata_1),
+        .rs2          (rdata_2),
+        .fun3         (fun3),
+        .branch_taken (branch_taken)
+    );
 // ----------寄存器堆----------
     wire [31:0] rdata_1,rdata_2,wdata;
 
@@ -74,8 +89,11 @@ module rv32e_scpu(
     );
     
     wire [31:0] operand_a,operand_b,alu_result;
-    assign operand_a = rdata_1;
-    assign operand_b = (alu_op == 2'b01) ? imm : rdata_2; 
+    assign operand_a = (alu_src_a == 2'b10) ? pc_reg :
+                        (alu_src_a == 2'b01) ? 32'h0 :
+                        rdata_1;
+    assign operand_b = (alu_src_b == 1'b1) ? imm :
+                        rdata_2;
 
     alu u_alu(
         .a          (operand_a      ),
@@ -87,9 +105,10 @@ module rv32e_scpu(
 // ----------写回-----------
     assign wdata = alu_result;
 
-// ----------分支----------
+// ----------下一个PC----------
     wire [31:0] pc_plus = pc_reg + 32'd4;
-    assign pc_next = pc_plus;
+    assign pc_next = (branch & branch_taken) ? alu_result :
+                    pc_plus;
 
     always @(posedge clock or negedge reset_n) begin
         if(!reset_n) begin

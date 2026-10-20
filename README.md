@@ -75,8 +75,11 @@ rv32e-verif/
 │   ├── tests_i.c      #   I 型 8 条指令测试
 │   ├── tests_i.exp    #   期望值:x1~x14
 │   └── link.ld        #   链接脚本:IMEM 0x0 / DMEM 0x200000
+├── doc/               # 文档
+│   ├── testplan.md    #   测试点矩阵 + 新指令接入流程
+│   ├── bugs.md        #   bug 记录(现象/根因/修复/发现方式)
+│   └── ic_verif_study.md # 12 周学习计划
 ├── Makefile
-└── ic_verif_study.md  # 12 周学习计划
 ```
 
 ## 快速上手
@@ -153,12 +156,7 @@ make wave         # 打开 GTKWave
 
 ### 测试计划
 
-每条指令的测试点设计原则(逐步应用到 tests/ 中):
-
-- **操作数边界**:0、1、-1(全 F)、最大/最小立即数
-- **x0 特例**:x0 作为 rs1 恒读 0;x0 作为 rd 写不进去
-- **符号扩展**:负立即数参与运算后的 32 位结果
-- **分支方向**:跳 / 不跳两个方向各测一次
+完整测试点矩阵见 [doc/testplan.md](doc/testplan.md),每条指令按"操作数边界 / 立即数边界 / x0 特例 / 符号扩展 / 移位边界 / 分支方向"拆解测试点,每个测试点对应测试用例与状态。新指令接入流程:先填矩阵 → 实现 RTL → 按矩阵写测试 → 回归 PASS → 勾选状态。
 
 ### 差分测试(difftest)
 
@@ -178,7 +176,7 @@ make wave         # 打开 GTKWave
 
 ## Bug 记录
 
-已发现并修复 12 个 bug,完整记录(现象/根因/修复/发现方式)见 [bugs.md](bugs.md):
+已发现并修复 12 个 bug,完整记录(现象/根因/修复/发现方式)见 [doc/bugs.md](doc/bugs.md):
 
 | 编号 | Bug | 发现方式 |
 |---|---|---|
@@ -201,7 +199,7 @@ make wave         # 打开 GTKWave
 
 ## Roadmap
 
-完整 12 周计划见 [ic_verif_study.md](ic_verif_study.md),摘要:
+完整 12 周计划见 [doc/ic_verif_study.md](doc/ic_verif_study.md),摘要:
 
 | 周次 | 里程碑 | 状态 |
 |---|---|---|

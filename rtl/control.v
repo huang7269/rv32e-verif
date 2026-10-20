@@ -5,11 +5,17 @@ module control(
     output reg reg_write,
     output reg mem_write,
     output reg mem_read,
+    output reg branch,
     output reg [1:0] alu_op,
+    output reg [1:0] alu_src_a,
+    output reg       alu_src_b,
     output reg [2:0] imm_sel
 );
-    localparam OP_R = 7'b0110011;
-    localparam OP_I = 7'b0010011;
+    localparam OP_R     = 7'b0110011;
+    localparam OP_I     = 7'b0010011;
+    localparam OP_LUI   = 7'b0110111;
+    localparam OP_AUIPC = 7'b0010111;
+    localparam OP_B     = 7'b1100011;
 
     localparam IMM_I = 3'd0;
     localparam IMM_S = 3'd1;
@@ -19,6 +25,7 @@ module control(
 
     always @(*) begin
         reg_write = 1'b0;mem_write = 1'b0;mem_read = 1'b0;alu_op = 2'b00;
+        branch = 1'b0; alu_src_a = 2'b00;alu_src_b = 1'b0;
         imm_sel = IMM_I;
 
         case(opcode)
@@ -27,11 +34,37 @@ module control(
                 mem_write = 1'b0;
                 mem_read  = 1'b0;
                 alu_op    = 2'b10;
+                alu_src_a = 2'b00;
+                alu_src_b = 1'b0;
             end
             OP_I: begin
                 reg_write = 1'b1;
-                imm_sel = IMM_I;
-                alu_op = 2'b01;
+                imm_sel   = IMM_I;
+                alu_op    = 2'b01;
+                alu_src_a = 2'b00;
+                alu_src_b = 1'b1;
+            end
+            OP_LUI:begin
+                reg_write = 1'b1;
+                imm_sel   = IMM_U;
+                alu_op    = 2'b00;
+                alu_src_a = 2'b01;
+                alu_src_b = 1'b1;
+            end
+            OP_AUIPC:begin
+                reg_write = 1'b1;
+                imm_sel   = IMM_U;
+                alu_op    = 2'b00;
+                alu_src_a = 2'b10;
+                alu_src_b = 1'b1;
+            end
+            OP_B:begin
+                reg_write = 1'b0;
+                imm_sel   = IMM_B;
+                alu_op    = 2'b00;
+                alu_src_a = 2'b10;
+                alu_src_b = 1'b1;
+                branch    = 1'b1;
             end
             default: ;
         endcase
