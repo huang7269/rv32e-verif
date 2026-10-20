@@ -25,7 +25,7 @@
 | addi | 负立即数 | -1(0xfff) | tests/tests_i.c | ✅ |
 | addi | 立即数边界 | +2047 / -2048 | — | ❌ 缺 |
 | addi | x0 作 rs1 | 恒读 0 | 各测试 setup 行 | ✅ |
-| addi | x0 作 rd | 写不进去 | tests/tests_r.c(第 5 周后验证) | ✅ |
+| addi | x0 作 rd | 写不进去 | tests/tests_r.c | ✅ |
 | R 型 | 10 条指令基本运算 | 小正数组合 | tests/tests_r.c | ✅ |
 | R 型 | sub 负数结果(借位) | 4-5 = -1 | tests/tests_r.c | ✅ |
 | R 型 | slt/sltu 有无符号区分 | 正数 vs 0xffffffff | tests/tests_r.c | ✅ |
@@ -39,31 +39,41 @@
 | I 型 | 立即数边界 | +2047 / -2048 | — | ❌ 缺 |
 | I 型 | 移位量边界 | 0 和 31 | — | ❌ 缺 |
 
-### 第 4 周:U 型 / 分支 / 跳转(预填)
+### 第 4 周:U 型 / 分支 / 跳转(已完成,缺口见 ❌)
 
 | 功能点 | 测试点 | 取值/场景 | 测试用例 | 状态 |
 |---|---|---|---|---|
-| lui | 基本装载 | imm<<12,低 12 位为 0 | — | 🔲 |
-| lui | 最大值 | imm=0xfffff → 0xfffff000 | — | 🔲 |
-| lui | x0 作 rd | 结果丢弃 | — | 🔲 |
-| auipc | pc+imm | 结果 = pc + (imm<<12) | — | 🔲 |
-| auipc | 负立即数 | imm 符号扩展,结果 < pc | — | 🔲 |
-| beq | 跳 / 不跳 | 相等跳,不等不跳 | — | 🔲 |
-| beq | 负偏移(向后跳) | 循环结构 | — | 🔲 |
-| beq | x0 与 x0 | 恒等,恒跳 | — | 🔲 |
-| bne | 跳 / 不跳 | 不等跳,相等不跳 | — | 🔲 |
-| blt / bge | 正负比较 | +4 < -1 / +4 ≥ -1 | — | 🔲 |
-| blt / bge | 负数比较 | -5 < -1 / -1 ≥ -5 | — | 🔲 |
-| blt / bge | 相等时不跳 | 4 < 4 为假 | — | 🔲 |
-| bltu / bgeu | 无符号比较 | 4 < 0xffffffff / 0xffffffff ≥ 4 | — | 🔲 |
-| bltu / bgeu | 相等时不跳 | — | 🔲 |
-| jal | 链接 x1 = pc+4 | — | 🔲 |
-| jal | 负偏移 | 向后跳 | — | 🔲 |
-| jal | x0 作 rd | 丢弃链接地址 | — | 🔲 |
-| jalr | 基本跳转 | 目标 = rs1 + imm | — | 🔲 |
-| jalr | **地址对齐** | 奇数地址目标 → (rs1+imm)&~1 | — | 🔲 |
-| jalr | 链接 x1 | — | 🔲 |
-| 综合 | 循环程序 | C 循环 10 次退出 | — | 🔲(第 4 周验收) |
+| lui | 基本装载 | imm=1 → 0x1000,低 12 位为 0 | tests/tests_u.c | ✅ |
+| lui | 最大值 | imm=0xfffff → 0xfffff000 | tests/tests_b.c | ✅ |
+| lui | x0 作 rd | 结果丢弃 | — | ❌ 缺 |
+| auipc | pc+imm | 0x4+0x1000 = 0x1004 | tests/tests_u.c | ✅ |
+| auipc | 负立即数 | imm 符号扩展,结果 < pc | — | ❌ 缺 |
+| beq | 跳 | x1==x2 跳 | tests/tests_b.c | ✅ |
+| beq | 不跳 | 不等不跳 | — | ❌ 缺 |
+| beq | 负偏移(向后跳) | 循环结构 | — | ❌ 缺 |
+| beq | x0 与 x0 | 恒等,恒跳 | — | ❌ 缺 |
+| bne | 跳 | 20≠21 跳 | tests/tests_b.c | ✅ |
+| bne | 不跳 | x10==x11 退出循环 | tests/tests_cycle.c | ✅ |
+| bne | 负偏移(向后跳) | 循环回跳 -8 | tests/tests_cycle.c | ✅ |
+| blt | 正负比较 | -5 < 3 跳 | tests/tests_b.c | ✅ |
+| blt | 负数比较 | -5 < -1 | — | ❌ 缺 |
+| blt | 相等时不跳 | 5<5 为假 | tests/tests_b.c | ✅ |
+| bge | 正数比较 | 100 ≥ 50 跳 | tests/tests_b.c | ✅ |
+| bge | 负数比较 | -1 ≥ -5 | — | ❌ 缺 |
+| bge | 相等时跳(≥含相等) | 5 ≥ 5 | — | ❌ 缺 |
+| bltu | 无符号比较 | 1 < 0x80000000 跳 | tests/tests_b.c | ✅ |
+| bltu | 相等时不跳 | — | — | ❌ 缺 |
+| bgeu | 无符号比较 | 0xfffff000 ≥ 0x7ffff000 跳 | tests/tests_b.c | ✅ |
+| bgeu | 相等时不跳 | — | — | ❌ 缺 |
+| jal | 链接 x1 = pc+4 | x1 = 0x4 | tests/tests_j.c | ✅ |
+| jal | 负偏移 | 向后跳 | — | ❌ 缺 |
+| jal | x0 作 rd | 丢弃链接地址 | — | ❌ 缺 |
+| jalr | 基本跳转 | 目标 = rs1+imm = 0x4 | tests/tests_j.c | ✅ |
+| jalr | **地址对齐** | 奇数地址目标 → (rs1+imm)&~1 | — | ❌ 缺 |
+| jalr | 链接 rd | x4 = pc+4 = 0x14 | tests/tests_j.c | ✅ |
+| jalr | x0 作 rd | 丢弃链接地址 | tests/tests_cycle.c | ✅ |
+| 综合 | 循环程序 | 10 次循环退出,52 周期 | tests/tests_cycle.c | ✅(第 4 周验收) |
+| 综合 | 调用/返回 | jal→sub_func→jalr 成对 | tests/tests_cycle.c | ✅ |
 
 ### 第 5 周:load/store(预填)
 

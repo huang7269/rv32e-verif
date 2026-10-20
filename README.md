@@ -8,7 +8,7 @@ RV32E 单周期 CPU 的仿真验证项目。
 - ✅ DPI-C 内存模型(pmem),支持 verilog-hex 格式程序加载
 - ✅ 测试程序 C 交叉编译流程(riscv64-linux-gnu-gcc → hex)
 - ✅ ebreak 后寄存器比对 checker(.exp 期望文件驱动,PASS/FAIL 判定 + 退出码)
-- ✅ 已实现指令:R 型全部 10 条、I 型全部 8 条(含 addi)、ebreak(详见[指令支持进度表](#指令支持进度表))
+- ✅ 已实现指令:R 型 10 条、I 型 8 条(含 addi)、lui/auipc、分支 6 条、jal/jalr、ebreak(详见[指令支持进度表](#指令支持进度表))
 - 🚧 差分测试(difftest)与 C++ 参考模型 —— 计划中
 - 🚧 功能覆盖率收集 —— 计划中
 - 🚧 UVM 验证环境 —— 计划中
@@ -74,6 +74,14 @@ rv32e-verif/
 │   ├── tests_r.exp    #   期望值:x1~x13
 │   ├── tests_i.c      #   I 型 8 条指令测试
 │   ├── tests_i.exp    #   期望值:x1~x14
+│   ├── tests_u.c      #   lui/auipc 测试
+│   ├── tests_u.exp    #   期望值:x1/x2
+│   ├── tests_b.c      #   分支 6 条指令测试(跳/不跳)
+│   ├── tests_b.exp    #   期望值:x1/x2/x10~x15
+│   ├── tests_j.c      #   jal/jalr 测试
+│   ├── tests_j.exp    #   期望值:x1~x4
+│   ├── tests_cycle.c  #   循环测试:负偏移分支 + 调用/返回(第 4 周验收)
+│   ├── tests_cycle.exp #  期望值:x1/x10/x11
 │   └── link.ld        #   链接脚本:IMEM 0x0 / DMEM 0x200000
 ├── doc/               # 文档
 │   ├── testplan.md    #   测试点矩阵 + 新指令接入流程
@@ -146,9 +154,9 @@ make wave         # 打开 GTKWave
 | 系统 | ebreak | ✅ 完成 | tests/dummy.c |
 | R 型 | add / sub / sll / slt / sltu / xor / srl / sra / or / and | ✅ 完成 | tests/tests_r.c |
 | I 型 | slti / sltiu / xori / ori / andi / slli / srli / srai | ✅ 完成 | tests/tests_i.c |
-| U 型 | lui / auipc | 🔲 计划(第 4 周) | — |
-| 分支 | beq / bne / blt / bge / bltu / bgeu | 🔲 计划(第 4 周) | — |
-| 跳转 | jal / jalr | 🔲 计划(第 4 周) | — |
+| U 型 | lui / auipc | ✅ 完成 | tests/tests_u.c |
+| 分支 | beq / bne / blt / bge / bltu / bgeu | ✅ 完成 | tests/tests_b.c |
+| 跳转 | jal / jalr | ✅ 完成 | tests/tests_j.c |
 | 访存 | lb / lh / lw / lbu / lhu / sb / sh / sw | 🔲 计划(第 5 周) | — |
 | 系统 | ecall | 🔲 计划(第 5 周) | — |
 
@@ -206,8 +214,8 @@ make wave         # 打开 GTKWave
 | 第 1 周 | 修复环境问题,建立 checker 闭环 | ✅ 完成 |
 | 第 2 周 | R 型指令 + 逐指令测试 | ✅ 完成 |
 | 第 3 周 | I 型指令 + 逐指令测试 | ✅ 完成 |
-| 第 4 周 | U 型 / 分支跳转 | 🔄 进行中 |
-| 第 5 周 | load-store | — |
+| 第 4 周 | U 型 / 分支跳转 | ✅ 完成 |
+| 第 5 周 | load-store | 🔄 进行中 |
 | 第 6~7 周 | C++ 参考模型 + difftest + 回归 | — |
 | 第 8 周 | 功能覆盖率收集 | — |
 | 第 9~11 周 | UVM 验证环境(与 C++ 环境共用参考模型) | — |

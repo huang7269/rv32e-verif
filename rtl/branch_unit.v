@@ -4,7 +4,7 @@ module branch_unit(
     input reg [31:0] rs1,
     input reg [31:0] rs2,
     input reg [2:0] fun3,
-    output branch_taken
+    output reg branch_taken
 );
     always @(*) begin
         case(fun3)

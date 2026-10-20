@@ -14,8 +14,8 @@ module rv32e_scpu(
     wire [31:0] inst_w;
 
     inst_mem u_inst_mem(
-        .inst_addr_i   (pc_reg),
-        .inst_data_o   (inst_w)
+        .inst_addr_i   (pc_reg  ),
+        .inst_data_o   (inst_w  )
     );
 
 // ----------指令字段----------
@@ -32,36 +32,40 @@ module rv32e_scpu(
     wire [1:0] alu_src_a;
     wire alu_src_b;
     wire branch;
+    wire jump;
+    wire jalr;
     wire [2:0] imm_sel;
 
     control u_control (
-        .opcode      (opcode),
-        .reg_write   (reg_write),
-        .mem_write   (mem_write),
-        .mem_read    (mem_read),
-        .branch      (branch),
-        .alu_op      (alu_op),
-        .alu_src_a   (alu_src_a),
-        .alu_src_b   (alu_src_b),
-        .imm_sel     (imm_sel)
+        .opcode      (opcode      ),
+        .reg_write   (reg_write   ),
+        .mem_write   (mem_write   ),
+        .mem_read    (mem_read    ),
+        .branch      (branch      ),
+        .jump        (jump        ),
+        .jalr        (jalr        ),
+        .alu_op      (alu_op      ),
+        .alu_src_a   (alu_src_a   ),
+        .alu_src_b   (alu_src_b   ),
+        .imm_sel     (imm_sel     )
     );
 
 // ----------立即数----------
     wire [31:0] imm;
 
     imm_gen u_imm_gen(
-        .inst    (inst_w),
-        .imm_sel (imm_sel),
-        .imm     (imm)
+        .inst    (inst_w    ),
+        .imm_sel (imm_sel   ),
+        .imm     (imm       )
     );
 
 // ----------分支单元----------
     wire branch_taken;
 
     branch_unit u_branch_unit(
-        .rs1          (rdata_1),
-        .rs2          (rdata_2),
-        .fun3         (fun3),
+        .rs1          (rdata_1     ),
+        .rs2          (rdata_2     ),
+        .fun3         (fun3        ),
         .branch_taken (branch_taken)
     );
 // ----------寄存器堆----------
@@ -103,11 +107,13 @@ module rv32e_scpu(
     );
 
 // ----------写回-----------
-    assign wdata = alu_result;
+    assign wdata = jump ? pc_plus : alu_result;
 
 // ----------下一个PC----------
+    wire [31:0] jump_target = jalr ? (alu_result & ~32'h1) : alu_result;
     wire [31:0] pc_plus = pc_reg + 32'd4;
-    assign pc_next = (branch & branch_taken) ? alu_result :
+    assign pc_next = jump                   ? jump_target :
+                    (branch & branch_taken) ? alu_result :
                     pc_plus;
 
     always @(posedge clock or negedge reset_n) begin
