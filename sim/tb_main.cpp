@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
 
         // 超时检测
         if (cycle_count >= max_cycles) {
-            printf("[WARNNING] simulation overtime (%d),program may enter dead loop\n", max_cycles);
+            printf("[WARNING] simulation overtime (%d),program may enter dead loop\n", max_cycles);
             ret_code = 2;
             break;
         }

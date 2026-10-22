@@ -1,10 +1,18 @@
+// ============================================================
+// 模块名 : alu
+// 功能   : RV32E 算术逻辑单元,支持 10 种运算
+//          移位量取低 5 位(b[4:0]),SLT/SRA 区分有无符号
+// 作者   : huangbang
+// 日期   : 2026-10
+// ============================================================
+
 `timescale 1ns/1ps
 
 module alu(
-    input  reg [31:0] a,
-    input  reg [31:0] b,
-    input  reg [3:0]  alu_ctrl,
-    output reg [31:0] alu_result   
+    input  wire [31:0] a,
+    input  wire [31:0] b,
+    input  wire [3:0]  alu_ctrl,
+    output reg  [31:0] alu_result   
 );
     localparam OP_ADD  = 4'd0;   //加法
     localparam OP_SUB  = 4'd1;   //减法

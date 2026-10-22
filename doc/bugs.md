@@ -121,3 +121,53 @@
 - **根因**:忽略了源码目录而非产物
 - **修复**:改为忽略产物(`*.hex *.o *.elf obj_dir/ wave.vcd`);`git rm --cached tests/dummy.hex` 移出跟踪
 - **发现方式**:git status 检查
+
+## BUG-13 data_mem 组合逻辑锁存器 ×2
+
+- **日期**:2026-10
+- **模块**:sim/data_mem.sv
+- **现象**:编译报 `%Warning-LATCH`:`rdata` 和 `mem_to_reg` 在 mem_read=0 时保持原值
+- **根因**:`always @(*)` 中 `if(mem_read)` 无 else,未覆盖全路径
+- **修复**:块首默认赋值 `data = 32'h0; rdata = 32'h0;` 再进 if
+- **发现方式**:Verilator lint 警告
+- **验证**:修复后 LATCH 警告清零
+
+## BUG-14 load 字节/半字选择忽略地址偏移
+
+- **日期**:2026-10
+- **模块**:sim/data_mem.sv
+- **现象**:`lb t1, 1(t0)` 读到的是字节 0 的值;tests_ls 自检 a0 bit0 置位(wmask 组全挂)
+- **根因**:`pmem_read` 返回 4 字节对齐整字,但 load 逻辑固定取 `rdata[7:0]`,未按 `addr[1:0]` 选择
+- **修复**:`rdata[addr[1:0]*8 +: 8]`(字节)、`rdata[addr[1]*16 +: 16]`(半字)
+- **发现方式**:定向测试自检(tests_ls 错误位编码,a0=0x7 一次暴露三组错误)
+- **验证**:修复后 a0 bit0 清零
+
+## BUG-15 store wmask 忽略地址偏移
+
+- **日期**:2026-10
+- **模块**:sim/data_mem.sv
+- **现象**:`sb t2, 1(t0)` 写进字节 0;tests_ls 自检 a0 bit0/bit2 置位
+- **根因**:sb/sh 的 wmask 恒为 `8'h1`/`8'h3`,未按 `addr[1:0]` 移位
+- **修复**:`8'h1 << addr[1:0]`、`8'h3 << addr[1:0]`
+- **发现方式**:定向测试自检
+- **验证**:修复后 pmem 调试打印确认 `sb @1` 只写 byte1
+
+## BUG-16 store 数据未按偏移复制(连锁暴露)
+
+- **日期**:2026-10
+- **模块**:sim/data_mem.sv
+- **现象**:修完 BUG-15 后,非零偏移的 sb/sh 会写入错误数据(pmem_write 对 wmask 第 i 位写 `wdata >> i*8`,数据在 wdata[7:0] 但写入 byte1 取的是 wdata[15:8])
+- **根因**:store 数据未按字节/半字复制到全字位宽
+- **修复**:`{4{wdata[7:0]}}`(sb)、`{2{wdata[15:0]}}`(sh)——复制 + 掩码选择的经典组合
+- **发现方式**:修复 BUG-15 后推演暴露的连锁问题
+- **验证**:tests_ls 写掩码验证组通过(sw 0x11223344 + sb 0x99@1 → 读回 0x11229944)
+
+## BUG-17 期望值笔误(golden value bug)
+
+- **日期**:2026-10
+- **模块**:tests/tests_ls.c
+- **现象**:checker 报 `[FAIL] x10 = 0x4`;测试自检 a0 bit2 置位,疑似 store-load 通路错误
+- **根因**:sb 掩码验证的期望值手推错误:`0x11223344` 的 byte1(0x33)被 sb 0x99 替换后应为 `0x11229944`,测试却写 `0x11993344`(错改了 byte2)。**DUT 正确,期望值错**
+- **修复**:期望值改为 `0x11229944`
+- **发现方式**:checker FAIL → pmem 调试打印排除写路径 → 波形读回确认 lw=0x11229944 → 手算字节序定位笔误
+- **经验**:本项目第一个 golden value bug。定位流程是"判断 DUT 错还是期望值错"的完整示范:先怀疑 RTL,用打印/波形逐层排除,最后手算字节序。difftest 时代此类判断是日常。

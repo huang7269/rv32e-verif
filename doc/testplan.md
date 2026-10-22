@@ -75,19 +75,22 @@
 | 综合 | 循环程序 | 10 次循环退出,52 周期 | tests/tests_cycle.c | ✅(第 4 周验收) |
 | 综合 | 调用/返回 | jal→sub_func→jalr 成对 | tests/tests_cycle.c | ✅ |
 
-### 第 5 周:load/store(预填)
+### 第 5 周:load/store(已完成,缺口见 ❌)
 
 | 功能点 | 测试点 | 取值/场景 | 测试用例 | 状态 |
 |---|---|---|---|---|
-| lw | 字读取 | 4 字节对齐地址 | — | 🔲 |
-| lb / lbu | 符号扩展 vs 零扩展 | 读 0xff 字节 | — | 🔲 |
-| lh / lhu | 符号扩展 vs 零扩展 | 读 0xffff 半字 | — | 🔲 |
-| sw | 字写入 | 4 字节对齐地址 | — | 🔲 |
-| sb | 字节写入 | 4 种字节位置(地址低 2 位 00/01/10/11) | — | 🔲 |
-| sh | 半字写入 | 2 种半字位置 | — | 🔲 |
-| 综合 | store→load 一致性 | 先写后读,4 种宽度组合 | — | 🔲 |
-| 综合 | 地址边界 | 0x0、0x200000(DMEM 起始)、0x3fffffc | — | 🔲 |
-| 综合 | 全局变量 | C 全局变量落在 .data/.bss,验证 link.ld | — | 🔲(第 5 周验收) |
+| lw | 字读取 | 4 字节对齐地址 | tests/tests_ls.c | ✅ |
+| lb / lbu | 符号扩展 vs 零扩展 | 读 0x80:0xFFFFFF80 vs 0x80 | tests/tests_ls.c | ✅ |
+| lh / lhu | 符号扩展 vs 零扩展 | 读 0x8000:0xFFFF8000 vs 0x8000 | tests/tests_ls.c | ✅ |
+| sw | 字写入 | 4 字节对齐地址 | tests/tests_ls.c | ✅ |
+| sb | 字节写入 | 4 种字节位置(地址低 2 位 00/01/10/11) | tests/tests_ls.c(DEADBEEF 四字节 + 写掩码) | ✅ |
+| sh | 半字写入 | 2 种半字位置 | tests/tests_ls.c | ✅ |
+| 综合 | store→load 一致性 | 同粒度回环 sb→lb/lbu、sh→lh/lhu、sw→lw | tests/tests_ls.c | ✅ |
+| 综合 | 写掩码验证 | sb/sh 只改目标字节/半字 | tests/tests_ls.c(0x11229944 / 0x1234CCDD) | ✅ |
+| 综合 | 跨粒度验证 | 整字写 → 分字节/半字读 | tests/tests_ls.c | ✅ |
+| 综合 | 地址边界 | 0x0、0x3fffffc | — | ❌ 缺 |
+| 综合 | 全局变量 | C 全局变量落在 .data/.bss,验证 link.ld | — | ❌ 缺(第 5 周验收) |
+| 系统 | ecall | halt 处理(与 ebreak 同) | — | ❌ 缺(已实现,无专属用例) |
 
 ## 三、新指令接入流程
 

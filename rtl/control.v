@@ -1,3 +1,11 @@
+// ============================================================
+// 模块名 : control
+// 功能   : 主控制单元,opcode 译码产生全部控制信号
+//          含操作数选择(alu_src_a/b)、分支/跳转/访存控制
+// 作者   : huangbang
+// 日期   : 2026-10
+// ============================================================
+
 `timescale 1ns/1ps
 
 module control(
@@ -20,6 +28,8 @@ module control(
     localparam OP_B     = 7'b1100011;
     localparam OP_JAL   = 7'b1101111;
     localparam OP_JALR  = 7'b1100111;
+    localparam OP_LOAD  = 7'b0000011;
+    localparam OP_STORE = 7'b0100011;
 
     localparam IMM_I = 3'd0;
     localparam IMM_S = 3'd1;
@@ -86,6 +96,21 @@ module control(
                 alu_src_b = 1'b1;
                 jump      = 1'b1;
                 jalr      = 1'b1;
+            end
+            OP_LOAD:begin
+                reg_write = 1'b1;
+                imm_sel   = IMM_I;
+                alu_op    = 2'b00;
+                alu_src_a = 2'b00;
+                alu_src_b = 1'b1;
+                mem_read  = 1'b1;
+            end
+            OP_STORE:begin
+                imm_sel   = IMM_S;
+                alu_op    = 2'b00;
+                alu_src_a = 2'b00;
+                alu_src_b = 1'b1;
+                mem_write = 1'b1;
             end
             default: ;
         endcase

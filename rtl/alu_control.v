@@ -1,9 +1,17 @@
+// ============================================================
+// 模块名 : alu_control
+// 功能   : ALU 控制单元,alu_op + fun3 + fun7 译码为 alu_ctrl
+//          fun7[5] 区分 add/sub 与 srl/sra
+// 作者   : huangbang
+// 日期   : 2026-10
+// ============================================================
+
 `timescale 1ns/1ps
 
 module alu_control(
     input  wire [1:0] alu_op,
     input  wire [2:0] fun3,
-    input  wire [6:0] fun7,
+    input  wire       fun7_5,
     output reg  [3:0] alu_ctrl
 );
     localparam OP_ADD  = 4'd0;   //加法
@@ -19,7 +27,7 @@ module alu_control(
 
     always @(*) begin
         case(alu_op)
-            2'b00: alu_ctrl = OP_ADD;             //lui
+            2'b00: alu_ctrl = OP_ADD;             //lui,load/store
             2'b01:begin                           //I型
                 case(fun3)
                     3'b000: alu_ctrl = OP_ADD;    //addi
@@ -29,17 +37,17 @@ module alu_control(
                     3'b110: alu_ctrl = OP_OR;     //ori
                     3'b111: alu_ctrl = OP_AND;    //andi
                     3'b001: alu_ctrl = OP_SLL;    //slli
-                    3'b101: alu_ctrl = fun7[5] ? OP_SRA : OP_SRL;   //srli/srai
+                    3'b101: alu_ctrl = fun7_5 ? OP_SRA : OP_SRL;   //srli/srai
                 endcase
             end
             2'b10:begin                  //R型
                 case(fun3)
-                    3'b000: alu_ctrl = fun7[5] ? OP_SUB : OP_ADD;
+                    3'b000: alu_ctrl = fun7_5 ? OP_SUB : OP_ADD;
                     3'b001: alu_ctrl = OP_SLL;
                     3'b010: alu_ctrl = OP_SLT;
                     3'b011: alu_ctrl = OP_SLTU;
                     3'b100: alu_ctrl = OP_XOR;
-                    3'b101: alu_ctrl = fun7[5] ? OP_SRA : OP_SRL;
+                    3'b101: alu_ctrl = fun7_5 ? OP_SRA : OP_SRL;
                     3'b110: alu_ctrl = OP_OR;
                     3'b111: alu_ctrl = OP_AND;
                 endcase

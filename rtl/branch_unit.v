@@ -1,9 +1,17 @@
-`timescale 1ps/1ps
+// ============================================================
+// 模块名 : branch_unit
+// 功能   : 分支条件判断,支持 beq/bne/blt/bge/bltu/bgeu
+//          blt/bge 有符号比较,bltu/bgeu 无符号比较
+// 作者   : huangbang
+// 日期   : 2026-10
+// ============================================================
+
+`timescale 1ns/1ps
 
 module branch_unit(
-    input reg [31:0] rs1,
-    input reg [31:0] rs2,
-    input reg [2:0] fun3,
+    input wire [31:0] rs1,
+    input wire [31:0] rs2,
+    input wire [2:0] fun3,
     output reg branch_taken
 );
     always @(*) begin

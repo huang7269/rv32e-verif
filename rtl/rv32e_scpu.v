@@ -1,3 +1,11 @@
+// ============================================================
+// 模块名 : rv32e_scpu
+// 功能   : RV32E 单周期 CPU 顶层
+//          取指/译码/执行/访存/写回,ebreak/ecall 触发 halt
+// 作者   : huangbang
+// 日期   : 2026-10
+// ============================================================
+
 `timescale 1ns/1ps
 
 module rv32e_scpu(
@@ -19,6 +27,7 @@ module rv32e_scpu(
     );
 
 // ----------指令字段----------
+    /* verilator lint_off UNUSEDSIGNAL */
     wire [6:0] fun7   = inst_w[31:25];
     wire [2:0] fun3   = inst_w[14:12];
     wire [4:0] rs1    = inst_w[19:15];
@@ -54,9 +63,9 @@ module rv32e_scpu(
     wire [31:0] imm;
 
     imm_gen u_imm_gen(
-        .inst    (inst_w    ),
-        .imm_sel (imm_sel   ),
-        .imm     (imm       )
+        .inst    (inst_w[31:7]    ),
+        .imm_sel (imm_sel         ),
+        .imm     (imm             )
     );
 
 // ----------分支单元----------
@@ -82,13 +91,26 @@ module rv32e_scpu(
         .rdata_2    (rdata_2   )
     );
 
+// ----------数据存储器----------
+    wire [31:0] reg_to_mem,mem_to_reg;
+    assign reg_to_mem = rdata_2;
+
+    data_mem u_data_mem(
+        .clock          (clock       ),
+        .mem_read       (mem_read    ),
+        .mem_write      (mem_write   ),
+        .addr           (alu_result  ),
+        .fun3           (fun3        ),
+        .wdata          (reg_to_mem  ),
+        .data           (mem_to_reg  )
+    );
 // ----------运算器与控制----------
     wire [3:0] alu_ctrl;
     
     alu_control u_alu_control(
         .alu_op   	(alu_op    ),
         .fun3     	(fun3      ),
-        .fun7     	(fun7      ),
+        .fun7_5     (fun7[5]   ),
         .alu_ctrl 	(alu_ctrl  )
     );
     
@@ -107,7 +129,9 @@ module rv32e_scpu(
     );
 
 // ----------写回-----------
-    assign wdata = jump ? pc_plus : alu_result;
+    assign wdata = mem_read ? mem_to_reg :
+                    jump ?     pc_plus :
+                    alu_result;
 
 // ----------下一个PC----------
     wire [31:0] jump_target = jalr ? (alu_result & ~32'h1) : alu_result;
@@ -125,9 +149,9 @@ module rv32e_scpu(
         end
     end
 
-// ----------ebreak检测----------
+// ----------ebreak/ecall检测----------
     assign pc = pc_reg;
     assign inst = inst_w;
-    assign halt = (inst_w == 32'h00100073);
+    assign halt = (inst_w == 32'h00100073 | inst_w == 32'h00000073);  //ebreak/ecall
 
 endmodule

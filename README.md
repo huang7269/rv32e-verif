@@ -8,7 +8,8 @@ RV32E 单周期 CPU 的仿真验证项目。
 - ✅ DPI-C 内存模型(pmem),支持 verilog-hex 格式程序加载
 - ✅ 测试程序 C 交叉编译流程(riscv64-linux-gnu-gcc → hex)
 - ✅ ebreak 后寄存器比对 checker(.exp 期望文件驱动,PASS/FAIL 判定 + 退出码)
-- ✅ 已实现指令:R 型 10 条、I 型 8 条(含 addi)、lui/auipc、分支 6 条、jal/jalr、ebreak(详见[指令支持进度表](#指令支持进度表))
+- ✅ 已实现指令:R 型 10 条、I 型 8 条(含 addi)、lui/auipc、分支 6 条、jal/jalr、load/store 8 条、ebreak/ecall(详见[指令支持进度表](#指令支持进度表))
+- ✅ 自检式定向测试:错误位编码 + 多组检查,覆盖 wmask/符号扩展/数据通路
 - 🚧 差分测试(difftest)与 C++ 参考模型 —— 计划中
 - 🚧 功能覆盖率收集 —— 计划中
 - 🚧 UVM 验证环境 —— 计划中
@@ -68,20 +69,18 @@ rv32e-verif/
 │   ├── checker.h
 │   └── checker.cpp
 ├── tests/             # 测试程序(C → hex,同名 .exp 为期望值)
-│   ├── dummy.c        #   addi + ebreak 冒烟测试
-│   ├── dummy.exp      #   期望值:x10 0x6
-│   ├── tests_r.c      #   R 型 10 条指令测试
-│   ├── tests_r.exp    #   期望值:x1~x13
-│   ├── tests_i.c      #   I 型 8 条指令测试
-│   ├── tests_i.exp    #   期望值:x1~x14
-│   ├── tests_u.c      #   lui/auipc 测试
-│   ├── tests_u.exp    #   期望值:x1/x2
-│   ├── tests_b.c      #   分支 6 条指令测试(跳/不跳)
-│   ├── tests_b.exp    #   期望值:x1/x2/x10~x15
-│   ├── tests_j.c      #   jal/jalr 测试
-│   ├── tests_j.exp    #   期望值:x1~x4
-│   ├── tests_cycle.c  #   循环测试:负偏移分支 + 调用/返回(第 4 周验收)
-│   ├── tests_cycle.exp #  期望值:x1/x10/x11
+│   ├── isa/           #   指令级测试
+│   │   ├── dummy.c    #     addi + ebreak 冒烟测试
+│   │   ├── dummy.exp  #     期望值:x10 0x6
+│   │   ├── tests_r.c  #     R 型 10 条指令测试
+│   │   ├── tests_i.c  #     I 型 8 条指令测试
+│   │   ├── tests_u.c  #     lui/auipc 测试
+│   │   ├── tests_b.c  #     分支 6 条指令测试(跳/不跳)
+│   │   ├── tests_j.c  #     jal/jalr 测试
+│   │   ├── tests_cycle.c #  循环测试:负偏移分支 + 调用/返回
+│   │   ├── tests_ls.c #     load/store 自检式测试(错误位编码)
+│   │   └── *.exp      #     各测试同名期望文件
+│   ├── prog/          #   程序级测试(预留)
 │   └── link.ld        #   链接脚本:IMEM 0x0 / DMEM 0x200000
 ├── doc/               # 文档
 │   ├── testplan.md    #   测试点矩阵 + 新指令接入流程
@@ -101,9 +100,9 @@ sudo apt install verilator gtkwave gcc-riscv64-linux-gnu
 ### 构建与运行
 
 ```bash
-make        # 构建 Verilator 仿真工程
-make hex    # 交叉编译测试程序生成 hex
-make run    # 运行 tests/dummy.hex
+make        # 构建 Verilator 仿真工程(lint 零警告,警告即报错)
+make hex    # 批量交叉编译 tests/isa/ 与 tests/prog/ 下所有测试
+make run    # 运行默认测试 tests/isa/dummy.hex(hex 过期时自动重编)
 ```
 
 预期输出(dummy.c 依次执行 3 条 addi 后 ebreak):
@@ -123,10 +122,16 @@ simulation succeeded!
 x10 0x6
 ```
 
-运行指定测试时自动配对同名 .exp:
+运行指定测试时自动配对同名 .exp,且 .c 有更新时自动重编 hex:
 
 ```bash
-make run HEX=xxx.hex    # 自动加载 tests/xxx.exp
+make run HEX=isa/tests_ls.hex    # 自动加载 tests/isa/tests_ls.exp
+```
+
+只编译单个测试(不仿真):
+
+```bash
+make tests/isa/tests_ls.hex
 ```
 
 ### 查看波形
@@ -140,11 +145,13 @@ make wave         # 打开 GTKWave
 
 | 目标 | 说明 |
 |---|---|
-| `make` | 构建仿真工程 |
-| `make hex` | 批量编译 tests/ 下所有 .c 为 .hex |
-| `make run HEX=xxx.hex` | 运行指定测试程序 |
-| `make wave` | 打开波形 |
-| `make clean` / `make clean_all` | 清理构建产物 / 全部产物 |
+| `make` | 构建仿真工程(lint 零警告门禁) |
+| `make hex` | 批量编译 isa/ 与 prog/ 下所有 .c 为 .hex |
+| `make tests/isa/xxx.hex` | 只编译单个测试 |
+| `make run HEX=isa/xxx.hex` | 运行指定测试(.c 更新自动重编,缺 .exp 报错) |
+| `make run WAVE=1` | 运行并生成波形 |
+| `make wave` | 打开 GTKWave |
+| `make clean` / `make clean_test` / `make clean_all` | 清理构建产物 / 测试产物 / 全部产物 |
 
 ## 指令支持进度表
 
@@ -157,8 +164,8 @@ make wave         # 打开 GTKWave
 | U 型 | lui / auipc | ✅ 完成 | tests/tests_u.c |
 | 分支 | beq / bne / blt / bge / bltu / bgeu | ✅ 完成 | tests/tests_b.c |
 | 跳转 | jal / jalr | ✅ 完成 | tests/tests_j.c |
-| 访存 | lb / lh / lw / lbu / lhu / sb / sh / sw | 🔲 计划(第 5 周) | — |
-| 系统 | ecall | 🔲 计划(第 5 周) | — |
+| 访存 | lb / lh / lw / lbu / lhu / sb / sh / sw | ✅ 完成 | tests/tests_ls.c |
+| 系统 | ecall | ✅ 完成(与 ebreak 同 halt 处理) | — |
 
 ## 验证方法学(建设中)
 
@@ -184,7 +191,7 @@ make wave         # 打开 GTKWave
 
 ## Bug 记录
 
-已发现并修复 12 个 bug,完整记录(现象/根因/修复/发现方式)见 [doc/bugs.md](doc/bugs.md):
+已发现并修复 17 个 bug,完整记录(现象/根因/修复/发现方式)见 [doc/bugs.md](doc/bugs.md):
 
 | 编号 | Bug | 发现方式 |
 |---|---|---|
@@ -200,6 +207,11 @@ make wave         # 打开 GTKWave
 | BUG-10 | 测试程序超前 RTL(未实现指令静默空转) | 波形分析 |
 | BUG-11 | 缺 exp 参数时 argv 越界读 | 边界测试 |
 | BUG-12 | .gitignore 忽略整个测试目录 | git status 检查 |
+| BUG-13 | data_mem 组合逻辑锁存器 ×2 | lint 警告 |
+| BUG-14 | load 字节/半字选择忽略地址偏移 | 定向测试自检 |
+| BUG-15 | store wmask 忽略地址偏移 | 定向测试自检 |
+| BUG-16 | store 数据未按偏移复制(连锁) | 修复后推演 |
+| BUG-17 | 期望值笔误(golden value bug) | checker FAIL + 波形定位 |
 
 ## 已知限制
 
@@ -215,8 +227,9 @@ make wave         # 打开 GTKWave
 | 第 2 周 | R 型指令 + 逐指令测试 | ✅ 完成 |
 | 第 3 周 | I 型指令 + 逐指令测试 | ✅ 完成 |
 | 第 4 周 | U 型 / 分支跳转 | ✅ 完成 |
-| 第 5 周 | load-store | 🔄 进行中 |
-| 第 6~7 周 | C++ 参考模型 + difftest + 回归 | — |
+| 第 5 周 | load-store | ✅ 完成 |
+| 第 6 周 | C++ 参考模型 + difftest | 🔄 进行中 |
+| 第 7 周 | 随机 difftest + 回归 | — |
 | 第 8 周 | 功能覆盖率收集 | — |
 | 第 9~11 周 | UVM 验证环境(与 C++ 环境共用参考模型) | — |
 | 第 12 周 | 面试材料整理 | — |
