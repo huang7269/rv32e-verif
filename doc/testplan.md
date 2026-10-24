@@ -13,7 +13,15 @@
 - **分支方向**:每条分支指令跳 / 不跳两个方向各测一次
 - **有无符号区分**:slt/sltu、slti/sltiu、blt/bltu、bge/bgeu 用负数操作数区分
 
-## 二、测试点矩阵
+## 二、测试协议(统一约定)
+
+- **结果寄存器**:a0(x10);`a0 == 0` 表示全部测试点通过
+- **错误位编码**:每个测试组对应一个错误位,组内任一点失败置位——一组失败不掩盖其他组
+- **期望文件**:统一 `x10 0x0`
+- **寄存器约定**:数据寄存器用 x11~x15;x1~x4(ra/sp/gp/tp)不占用;t0~t2 为宏内部寄存器
+- **测试宏**:tests/isa/macros.h(TEST_GROUP / CHECK_EQ / CHECK_NQ / TEST_END)
+
+## 三、测试点矩阵
 
 状态:✅ 已覆盖 | ❌ 缺失(待补) | 🔲 计划中
 
@@ -21,87 +29,86 @@
 
 | 功能点 | 测试点 | 取值/场景 | 测试用例 | 状态 |
 |---|---|---|---|---|
-| addi | 正立即数 | +1/+2/+3 | tests/dummy.c | ✅ |
-| addi | 负立即数 | -1(0xfff) | tests/tests_i.c | ✅ |
-| addi | 立即数边界 | +2047 / -2048 | — | ❌ 缺 |
-| addi | x0 作 rs1 | 恒读 0 | 各测试 setup 行 | ✅ |
-| addi | x0 作 rd | 写不进去 | tests/tests_r.c | ✅ |
-| R 型 | 10 条指令基本运算 | 小正数组合 | tests/tests_r.c | ✅ |
-| R 型 | sub 负数结果(借位) | 4-5 = -1 | tests/tests_r.c | ✅ |
-| R 型 | slt/sltu 有无符号区分 | 正数 vs 0xffffffff | tests/tests_r.c | ✅ |
-| R 型 | sra/srl 负数移位 | -1>>4 vs -1>>>4 | tests/tests_r.c | ✅ |
-| R 型 | x0 作 rd | add x0, x1, x2 结果丢弃 | tests/tests_r.c | ✅ |
-| R 型 | 移位量边界 | 0 和 31 | — | ❌ 缺 |
-| R 型 | 加减溢出回绕 | 0x7fffffff+1 = 0x80000000 | — | ❌ 缺 |
-| I 型 | 8 条指令基本运算 | 小立即数组合 | tests/tests_i.c | ✅ |
-| I 型 | -1 立即数符号扩展 | xori/ori/andi/slti 带 -1 | tests/tests_i.c | ✅ |
-| I 型 | 移位指令 funct7 混入立即数 | srai 立即数 = 0x404,移位量取低 5 位 | tests/tests_i.c | ✅ |
-| I 型 | 立即数边界 | +2047 / -2048 | — | ❌ 缺 |
-| I 型 | 移位量边界 | 0 和 31 | — | ❌ 缺 |
+| addi | 正立即数 | +1/+2/+3 | isa/smoke_addi.c | ✅ |
+| addi | 负立即数 | -1(0xfff) | isa/smoke_addi.c | ✅ |
+| addi | 立即数边界 | +2047 / -2048 | isa/smoke_addi.c | ✅ |
+| addi | x0 作 rs1 | 恒读 0 | isa/smoke_addi.c | ✅ |
+| addi | x0 作 rd | 写不进去 | isa/smoke_addi.c | ✅ |
+| R 型 | 10 条指令基本运算 | 小正数组合 | isa/alu_rtype.c | ✅ |
+| R 型 | sub 负数结果(借位) | 4-5 = -1 | isa/alu_rtype.c | ✅ |
+| R 型 | slt/sltu 有无符号区分 | 正数 vs 0xffffffff | isa/alu_rtype.c | ✅ |
+| R 型 | sra/srl 负数移位 | -1>>4 vs -1>>>4 | isa/alu_rtype.c | ✅ |
+| R 型 | x0 作 rd | add x0, x1, x2 结果丢弃 | isa/alu_rtype.c | ✅ |
+| R 型 | 移位量边界 | 0 和 31 | isa/alu_rtype.c | ✅ |
+| R 型 | 加减溢出回绕 | 0x7fffffff+1 = 0x80000000 | isa/alu_rtype.c | ✅ |
+| I 型 | 8 条指令基本运算 | 小立即数组合 | isa/alu_itype.c | ✅ |
+| I 型 | -1 立即数符号扩展 | xori/ori/andi/slti 带 -1 | isa/alu_itype.c | ✅ |
+| I 型 | 移位指令 funct7 混入立即数 | srai 立即数 = 0x404,移位量取低 5 位 | isa/alu_itype.c | ✅ |
+| I 型 | 立即数边界 | +2047 / -2048 | isa/alu_itype.c | ✅ |
+| I 型 | 移位量边界 | 0 和 31 | isa/alu_itype.c | ✅ |
 
-### 第 4 周:U 型 / 分支 / 跳转(已完成,缺口见 ❌)
-
-| 功能点 | 测试点 | 取值/场景 | 测试用例 | 状态 |
-|---|---|---|---|---|
-| lui | 基本装载 | imm=1 → 0x1000,低 12 位为 0 | tests/tests_u.c | ✅ |
-| lui | 最大值 | imm=0xfffff → 0xfffff000 | tests/tests_b.c | ✅ |
-| lui | x0 作 rd | 结果丢弃 | — | ❌ 缺 |
-| auipc | pc+imm | 0x4+0x1000 = 0x1004 | tests/tests_u.c | ✅ |
-| auipc | 负立即数 | imm 符号扩展,结果 < pc | — | ❌ 缺 |
-| beq | 跳 | x1==x2 跳 | tests/tests_b.c | ✅ |
-| beq | 不跳 | 不等不跳 | — | ❌ 缺 |
-| beq | 负偏移(向后跳) | 循环结构 | — | ❌ 缺 |
-| beq | x0 与 x0 | 恒等,恒跳 | — | ❌ 缺 |
-| bne | 跳 | 20≠21 跳 | tests/tests_b.c | ✅ |
-| bne | 不跳 | x10==x11 退出循环 | tests/tests_cycle.c | ✅ |
-| bne | 负偏移(向后跳) | 循环回跳 -8 | tests/tests_cycle.c | ✅ |
-| blt | 正负比较 | -5 < 3 跳 | tests/tests_b.c | ✅ |
-| blt | 负数比较 | -5 < -1 | — | ❌ 缺 |
-| blt | 相等时不跳 | 5<5 为假 | tests/tests_b.c | ✅ |
-| bge | 正数比较 | 100 ≥ 50 跳 | tests/tests_b.c | ✅ |
-| bge | 负数比较 | -1 ≥ -5 | — | ❌ 缺 |
-| bge | 相等时跳(≥含相等) | 5 ≥ 5 | — | ❌ 缺 |
-| bltu | 无符号比较 | 1 < 0x80000000 跳 | tests/tests_b.c | ✅ |
-| bltu | 相等时不跳 | — | — | ❌ 缺 |
-| bgeu | 无符号比较 | 0xfffff000 ≥ 0x7ffff000 跳 | tests/tests_b.c | ✅ |
-| bgeu | 相等时不跳 | — | — | ❌ 缺 |
-| jal | 链接 x1 = pc+4 | x1 = 0x4 | tests/tests_j.c | ✅ |
-| jal | 负偏移 | 向后跳 | — | ❌ 缺 |
-| jal | x0 作 rd | 丢弃链接地址 | — | ❌ 缺 |
-| jalr | 基本跳转 | 目标 = rs1+imm = 0x4 | tests/tests_j.c | ✅ |
-| jalr | **地址对齐** | 奇数地址目标 → (rs1+imm)&~1 | — | ❌ 缺 |
-| jalr | 链接 rd | x4 = pc+4 = 0x14 | tests/tests_j.c | ✅ |
-| jalr | x0 作 rd | 丢弃链接地址 | tests/tests_cycle.c | ✅ |
-| 综合 | 循环程序 | 10 次循环退出,52 周期 | tests/tests_cycle.c | ✅(第 4 周验收) |
-| 综合 | 调用/返回 | jal→sub_func→jalr 成对 | tests/tests_cycle.c | ✅ |
-
-### 第 5 周:load/store(已完成,缺口见 ❌)
+### U 型 / 分支 / 跳转
 
 | 功能点 | 测试点 | 取值/场景 | 测试用例 | 状态 |
 |---|---|---|---|---|
-| lw | 字读取 | 4 字节对齐地址 | tests/tests_ls.c | ✅ |
-| lb / lbu | 符号扩展 vs 零扩展 | 读 0x80:0xFFFFFF80 vs 0x80 | tests/tests_ls.c | ✅ |
-| lh / lhu | 符号扩展 vs 零扩展 | 读 0x8000:0xFFFF8000 vs 0x8000 | tests/tests_ls.c | ✅ |
-| sw | 字写入 | 4 字节对齐地址 | tests/tests_ls.c | ✅ |
-| sb | 字节写入 | 4 种字节位置(地址低 2 位 00/01/10/11) | tests/tests_ls.c(DEADBEEF 四字节 + 写掩码) | ✅ |
-| sh | 半字写入 | 2 种半字位置 | tests/tests_ls.c | ✅ |
-| 综合 | store→load 一致性 | 同粒度回环 sb→lb/lbu、sh→lh/lhu、sw→lw | tests/tests_ls.c | ✅ |
-| 综合 | 写掩码验证 | sb/sh 只改目标字节/半字 | tests/tests_ls.c(0x11229944 / 0x1234CCDD) | ✅ |
-| 综合 | 跨粒度验证 | 整字写 → 分字节/半字读 | tests/tests_ls.c | ✅ |
-| 综合 | 地址边界 | 0x0、0x3fffffc | — | ❌ 缺 |
-| 综合 | 全局变量 | C 全局变量落在 .data/.bss,验证 link.ld | — | ❌ 缺(第 5 周验收) |
-| 系统 | ecall | halt 处理(与 ebreak 同) | — | ❌ 缺(已实现,无专属用例) |
+| lui | 基本装载 | imm=1 → 0x1000,低 12 位为 0 | isa/alu_utype.c | ✅ |
+| lui | 最大值 | imm=0xfffff → 0xfffff000 | isa/alu_utype.c | ✅ |
+| lui | x0 作 rd | 结果丢弃 | isa/alu_utype.c | ✅ |
+| auipc | pc+imm | 相对校验(补偿 4 字节 pc 差) | isa/alu_utype.c | ✅ |
+| auipc | 负立即数 | 0xfffff → pc-0x1000,结果为负 | isa/alu_utype.c | ✅ |
+| beq | 跳 | x11==x12 跳 | isa/branch.c | ✅ |
+| beq | 不跳 | 不等不跳 | isa/branch.c | ✅ |
+| beq | 负偏移(向后跳) | 循环回跳 | isa/branch.c | ✅ |
+| beq | x0 与 x0 | 恒等,恒跳 | isa/branch.c | ✅ |
+| bne | 跳 | 20≠21 跳 | isa/branch.c | ✅ |
+| bne | 不跳 | 相等不跳 | isa/branch.c | ✅ |
+| bne | 负偏移(向后跳) | 循环回跳 | isa/branch.c | ✅ |
+| blt | 正负比较 | -5 < 3 跳 | isa/branch.c | ✅ |
+| blt | 负数比较 | -5 < -1 跳 | isa/branch.c | ✅ |
+| blt | 相等时不跳 | 5<5 为假 | isa/branch.c | ✅ |
+| bge | 正数比较 | 100 ≥ 50 跳 | isa/branch.c | ✅ |
+| bge | 负数比较 | -1 ≥ -5 跳 | isa/branch.c | ✅ |
+| bge | 相等时跳(≥含相等) | 5 ≥ 5 | isa/branch.c | ✅ |
+| bltu | 无符号比较 | 1 < 0x80000000 跳 | isa/branch.c | ✅ |
+| bltu | 相等时不跳 | 5<5 为假 | isa/branch.c | ✅ |
+| bgeu | 无符号比较 | 0xfffff000 ≥ 0x7ffff000 跳 | isa/branch.c | ✅ |
+| bgeu | 相等时跳(≥含相等) | 5 ≥ 5 | isa/branch.c | ✅ |
+| jal | 链接 = pc+4 | 链接值与目标地址比对 | isa/jump.c | ✅ |
+| jal | 负偏移 | 向后跳 | isa/jump.c | ✅ |
+| jal | x0 作 rd | 丢弃链接地址 | isa/jump.c | ✅ |
+| jalr | 基本跳转 | 目标 = rs1+imm | isa/jump.c | ✅ |
+| jalr | **地址对齐** | 奇数地址目标 → (rs1+imm)&~1 | isa/jump.c | ✅ |
+| jalr | 链接 rd | 链接值与目标地址比对 | isa/jump.c | ✅ |
+| jalr | x0 作 rd | 丢弃链接地址 | isa/jump.c | ✅ |
+| jalr | 立即数偏移 | imm=8 落点精确区分 | isa/jump.c | ✅ |
 
-## 三、新指令接入流程
+### load/store / 系统
+
+| 功能点 | 测试点 | 取值/场景 | 测试用例 | 状态 |
+|---|---|---|---|---|
+| lw | 字读取 | 4 字节对齐地址 | isa/load_store.c | ✅ |
+| lb / lbu | 符号扩展 vs 零扩展 | 读 0x80:0xFFFFFF80 vs 0x80 | isa/load_store.c | ✅ |
+| lh / lhu | 符号扩展 vs 零扩展 | 读 0x8000:0xFFFF8000 vs 0x8000 | isa/load_store.c | ✅ |
+| sw | 字写入 | 4 字节对齐地址 | isa/load_store.c | ✅ |
+| sb | 字节写入 | 4 种字节位置(地址低 2 位 00/01/10/11) | isa/load_store.c | ✅ |
+| sh | 半字写入 | 2 种半字位置 | isa/load_store.c | ✅ |
+| 综合 | store→load 一致性 | 同粒度回环 sb→lb/lbu、sh→lh/lhu、sw→lw | isa/load_store.c | ✅ |
+| 综合 | 写掩码验证 | sb/sh 只改目标字节/半字(0x11229944 / 0x1234CCDD) | isa/load_store.c | ✅ |
+| 综合 | 跨粒度验证 | 整字写 → 分字节/半字读 | isa/load_store.c | ✅ |
+| 综合 | 地址边界 | 0x0、0x003ffffc(PMEM 最高对齐字) | isa/load_store.c | ✅ |
+| 综合 | 全局变量 | .sdata/.bss 落在 DMEM 区,验证 link.ld | prog/global_var.c | ✅(第 5 周验收) |
+| 系统 | ecall | halt 处理(与 ebreak 同) | isa/ecall.c | ✅ |
+
+## 四、新指令接入流程
 
 1. **填矩阵**:在上表中新增指令的测试点行(先写文档再写代码)
 2. **实现 RTL**
-3. **写测试**:`tests/isa/<name>.c` + 同名 `.exp`(期望值手推)
-4. **回归**:`make run HEX=<name>.hex`,全部 PASS
+3. **写测试**:`tests/isa/<name>.c` + 同名 `.exp`(统一 `x10 0x0`)
+4. **回归**:`make run HEX=isa/<name>.hex`,全部 PASS
 5. **勾状态**:矩阵行 ✅
 6. **提交**:milestone commit(如 "add branch instructions, tests all pass!")
 
-## 四、覆盖率映射(第 8 周)
+## 五、覆盖率映射(第 8 周)
 
 第 8 周的功能覆盖率直接从此矩阵推导:
 

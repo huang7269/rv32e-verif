@@ -75,7 +75,7 @@ hex: $(TEST_HEXS)
 	rm -f $(@:.hex=.o) $(@:.hex=.elf)
 
 # 运行仿真
-HEX ?= isa/dummy.hex
+HEX ?= isa/smoke_addi.hex
 EXP ?= $(HEX:.hex=.exp)
 WAVE ?= 0
 

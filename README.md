@@ -9,7 +9,7 @@ RV32E 单周期 CPU 的仿真验证项目。
 - ✅ 测试程序 C 交叉编译流程(riscv64-linux-gnu-gcc → hex)
 - ✅ ebreak 后寄存器比对 checker(.exp 期望文件驱动,PASS/FAIL 判定 + 退出码)
 - ✅ 已实现指令:R 型 10 条、I 型 8 条(含 addi)、lui/auipc、分支 6 条、jal/jalr、load/store 8 条、ebreak/ecall(详见[指令支持进度表](#指令支持进度表))
-- ✅ 自检式定向测试:错误位编码 + 多组检查,覆盖 wmask/符号扩展/数据通路
+- ✅ 统一测试协议的自检式定向测试:9 套测试覆盖 testplan 全部 55 个测试点(a0=0 全通过,错误位编码,测试宏封装)
 - 🚧 差分测试(difftest)与 C++ 参考模型 —— 计划中
 - 🚧 功能覆盖率收集 —— 计划中
 - 🚧 UVM 验证环境 —— 计划中
@@ -69,18 +69,19 @@ rv32e-verif/
 │   ├── checker.h
 │   └── checker.cpp
 ├── tests/             # 测试程序(C → hex,同名 .exp 为期望值)
-│   ├── isa/           #   指令级测试
-│   │   ├── dummy.c    #     addi + ebreak 冒烟测试
-│   │   ├── dummy.exp  #     期望值:x10 0x6
-│   │   ├── tests_r.c  #     R 型 10 条指令测试
-│   │   ├── tests_i.c  #     I 型 8 条指令测试
-│   │   ├── tests_u.c  #     lui/auipc 测试
-│   │   ├── tests_b.c  #     分支 6 条指令测试(跳/不跳)
-│   │   ├── tests_j.c  #     jal/jalr 测试
-│   │   ├── tests_cycle.c #  循环测试:负偏移分支 + 调用/返回
-│   │   ├── tests_ls.c #     load/store 自检式测试(错误位编码)
-│   │   └── *.exp      #     各测试同名期望文件
-│   ├── prog/          #   程序级测试(预留)
+│   ├── isa/           #   指令级测试(统一协议: a0=0 全通过,错误位编码)
+│   │   ├── macros.h   #     测试宏:TEST_GROUP / CHECK_EQ / CHECK_NQ / TEST_END
+│   │   ├── smoke_addi.c #   addi 全部测试点(含立即数边界)
+│   │   ├── alu_rtype.c  #   R 型全部测试点(含溢出回绕/移位边界)
+│   │   ├── alu_itype.c  #   I 型全部测试点
+│   │   ├── alu_utype.c  #   lui/auipc(相对地址校验)
+│   │   ├── branch.c     #   6 条分支(跳/不跳/负偏移/负数比较)
+│   │   ├── jump.c       #   jal/jalr(链接校验/奇数对齐/立即数偏移)
+│   │   ├── load_store.c #   访存(wmask/扩展/一致性/地址边界)
+│   │   ├── ecall.c      #   ecall halt 处理
+│   │   └── *.exp      #     各测试同名期望文件(统一 x10 0x0)
+│   ├── prog/          #   程序级测试
+│   │   └── global_var.c # 全局变量 + link.ld 验收(第 5 周)
 │   └── link.ld        #   链接脚本:IMEM 0x0 / DMEM 0x200000
 ├── doc/               # 文档
 │   ├── testplan.md    #   测试点矩阵 + 新指令接入流程
@@ -102,10 +103,10 @@ sudo apt install verilator gtkwave gcc-riscv64-linux-gnu
 ```bash
 make        # 构建 Verilator 仿真工程(lint 零警告,警告即报错)
 make hex    # 批量交叉编译 tests/isa/ 与 tests/prog/ 下所有测试
-make run    # 运行默认测试 tests/isa/dummy.hex(hex 过期时自动重编)
+make run    # 运行默认测试 tests/isa/smoke_addi.hex(hex 过期时自动重编)
 ```
 
-预期输出(dummy.c 依次执行 3 条 addi 后 ebreak):
+预期输出(smoke_addi.c 依次执行 3 条 addi 后 ebreak):
 
 ```
 [INFO] enter EBREAK,clock cycle: 3
@@ -116,16 +117,18 @@ simulation succeeded!
 
 ### 期望文件(.exp)
 
-每个测试程序配一个同名 `.exp` 文件,每行声明一个寄存器的期望值:`x<编号> <十六进制值>`,未声明的寄存器期望为 0。ebreak 后 checker 逐寄存器比对,FAIL 时退出码为 3。例如 `tests/dummy.exp`:
+统一测试协议:测试程序自检,结果编码在 a0(x10)——**a0=0 表示全部测试点通过**,每个测试组对应一个错误位。期望文件统一只有一行,如 `tests/isa/smoke_addi.exp`:
 
 ```
-x10 0x6
+x10 0x0
 ```
+
+checker 在 ebreak 后逐寄存器比对 .exp 声明的期望值,FAIL 时退出码为 3。
 
 运行指定测试时自动配对同名 .exp,且 .c 有更新时自动重编 hex:
 
 ```bash
-make run HEX=isa/tests_ls.hex    # 自动加载 tests/isa/tests_ls.exp
+make run HEX=isa/load_store.hex   # 自动加载 tests/isa/load_store.exp
 ```
 
 只编译单个测试(不仿真):
@@ -157,14 +160,14 @@ make wave         # 打开 GTKWave
 
 | 类型 | 指令 | 状态 | 测试用例 |
 |---|---|---|---|
-| I 型 | addi | ✅ 完成 | tests/dummy.c |
-| 系统 | ebreak | ✅ 完成 | tests/dummy.c |
-| R 型 | add / sub / sll / slt / sltu / xor / srl / sra / or / and | ✅ 完成 | tests/tests_r.c |
-| I 型 | slti / sltiu / xori / ori / andi / slli / srli / srai | ✅ 完成 | tests/tests_i.c |
-| U 型 | lui / auipc | ✅ 完成 | tests/tests_u.c |
-| 分支 | beq / bne / blt / bge / bltu / bgeu | ✅ 完成 | tests/tests_b.c |
-| 跳转 | jal / jalr | ✅ 完成 | tests/tests_j.c |
-| 访存 | lb / lh / lw / lbu / lhu / sb / sh / sw | ✅ 完成 | tests/tests_ls.c |
+| I 型 | addi | ✅ 完成 | isa/smoke_addi.c |
+| 系统 | ebreak | ✅ 完成 | isa/smoke_addi.c |
+| R 型 | add / sub / sll / slt / sltu / xor / srl / sra / or / and | ✅ 完成 | isa/alu_rtype.c |
+| I 型 | slti / sltiu / xori / ori / andi / slli / srli / srai | ✅ 完成 | isa/alu_itype.c |
+| U 型 | lui / auipc | ✅ 完成 | isa/alu_utype.c |
+| 分支 | beq / bne / blt / bge / bltu / bgeu | ✅ 完成 | isa/branch.c |
+| 跳转 | jal / jalr | ✅ 完成 | isa/jump.c |
+| 访存 | lb / lh / lw / lbu / lhu / sb / sh / sw | ✅ 完成 | isa/load_store.c |
 | 系统 | ecall | ✅ 完成(与 ebreak 同 halt 处理) | — |
 
 ## 验证方法学(建设中)
@@ -191,7 +194,7 @@ make wave         # 打开 GTKWave
 
 ## Bug 记录
 
-已发现并修复 17 个 bug,完整记录(现象/根因/修复/发现方式)见 [doc/bugs.md](doc/bugs.md):
+已发现并修复 23 个 bug,完整记录(现象/根因/修复/发现方式)见 [doc/bugs.md](doc/bugs.md):
 
 | 编号 | Bug | 发现方式 |
 |---|---|---|
@@ -212,6 +215,12 @@ make wave         # 打开 GTKWave
 | BUG-15 | store wmask 忽略地址偏移 | 定向测试自检 |
 | BUG-16 | store 数据未按偏移复制(连锁) | 修复后推演 |
 | BUG-17 | 期望值笔误(golden value bug) | checker FAIL + 波形定位 |
+| BUG-18 | TEST_GROUP 宏 %= 编译失败 | 编译错误 |
+| BUG-19 | clobber sp 触发栈序言写负地址 | 运行时边界报错 |
+| BUG-20 | auipc 相对校验差 4 字节(测试设计) | checker FAIL |
+| BUG-21 | jal/jalr 链接值目标错位(测试设计) | checker FAIL |
+| BUG-22 | 地址边界笔误超 PMEM(反向验证边界保护) | checker FAIL + 波形 |
+| BUG-23 | GAS 拒绝负 auipc 立即数 | 编译错误 |
 
 ## 已知限制
 

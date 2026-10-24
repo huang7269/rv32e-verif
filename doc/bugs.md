@@ -171,3 +171,59 @@
 - **修复**:期望值改为 `0x11229944`
 - **发现方式**:checker FAIL → pmem 调试打印排除写路径 → 波形读回确认 lw=0x11229944 → 手算字节序定位笔误
 - **经验**:本项目第一个 golden value bug。定位流程是"判断 DUT 错还是期望值错"的完整示范:先怀疑 RTL,用打印/波形逐层排除,最后手算字节序。difftest 时代此类判断是日常。
+
+## BUG-18 TEST_GROUP 宏 %= 编译失败
+
+- **日期**:2026-10
+- **模块**:tests/isa/macros.h
+- **现象**:`unrecognized opcode 'test_sll_%='`,所有使用 TEST_GROUP 的测试编译失败
+- **根因**:gcc 13.3.0 不展开内联汇编模板中的 `%=`(实测 x86/riscv 两个编译器均不处理),标签原样传给汇编器
+- **修复**:TEST_GROUP/TEST_END 改用普通命名标签(组名在单文件内唯一,无需 %= 唯一后缀)
+- **发现方式**:编译错误 + 最小复现实验
+
+## BUG-19 测试 clobber sp(x2)触发栈序言,负地址写内存
+
+- **日期**:2026-10
+- **模块**:tests/isa/*.c
+- **现象**:运行时报 `[pmem_write error] -8/-4 over PMEM_SIZE`
+- **根因**:测试把 x2(sp)当数据寄存器并写入 clobber 列表,GCC 被迫生成栈保护代码(addi sp,sp,-12; sw ra,8(sp)),而 sp 初始为 0 → 栈写到负地址。编译警告已明示:"listing the stack pointer register 'x2' in a clobber list is deprecated"
+- **修复**:确立寄存器约定——测试数据只用 x11~x15(a1~a5),不碰 x1~x4(ra/sp/gp/tp);配合 noreturn + __builtin_unreachable
+- **发现方式**:运行时 pmem_write 边界报错 + 编译警告
+- **经验**:以前测试无 clobber 列表时用 x1"侥幸能跑"是对编译器隐瞒真相,一旦诚实声明 clobber,GCC 立即要保护 ra——规范测试必须避开 ABI 语义寄存器
+
+## BUG-20 测试设计:auipc 相对校验差 4 字节
+
+- **日期**:2026-10
+- **模块**:tests/isa/alu_utype.c
+- **现象**:checker 报 a0=0x18(auipc 两个组全 FAIL)
+- **根因**:`auipc x11,1` 与 `auipc x12,0` 位于不同地址(相差 4 字节),两者 pc 基准不同,相减得 0xffc 而非 0x1000
+- **修复**:补偿 4 字节 pc 差(sub 后 addi 4/-4)
+- **发现方式**:checker FAIL + 手推指令地址
+
+## BUG-21 测试设计:jal/jalr 链接值目标错位
+
+- **日期**:2026-10
+- **模块**:tests/isa/jump.c
+- **现象**:checker 报 a0=0x11(链接校验两组全 FAIL)
+- **根因**:链接值 = 跳转指令地址+4,即紧随其后那条指令的地址;测试却把目标标签放在下下条(中间隔了防护跳转)
+- **修复**:链接校验的目标标签紧贴跳转指令;跳转本身是否发生由独立的 x0-rd 组覆盖
+- **发现方式**:checker FAIL + 手推链接值语义
+
+## BUG-22 测试地址边界笔误(0x3fffffc 超 PMEM 范围)
+
+- **日期**:2026-10
+- **模块**:tests/isa/load_store.c、doc/testplan.md
+- **现象**:checker 报 a0=0x8(边界组 FAIL),0x3fffffc 处 lw 读回 0
+- **根因**:`0x3fffffc`(约 64MB)远超 PMEM_SIZE(4MB),正确的最高对齐字是 `0x003ffffc`;**pmem 边界检查正确拦截了越界写**,mem 保持 0
+- **修复**:测试与 testplan 均改为 0x003ffffc
+- **发现方式**:checker FAIL → 波形确认读回 0 → 核对 PMEM_SIZE 发现地址位数笔误
+- **经验**:负面收获——此 bug 反向验证了 pmem 边界保护真实生效
+
+## BUG-23 GAS 拒绝负 auipc 立即数
+
+- **日期**:2026-10
+- **模块**:tests/isa/alu_utype.c
+- **现象**:`Error: lui expression not in range 0..1048575`(`auipc x11, -1`)
+- **根因**:GAS 对 auipc 立即数只接受无符号 20 位范围
+- **修复**:改用 `0xfffff`(位型相同,RTL 侧 pc+0xfffff000 = pc-0x1000)
+- **发现方式**:编译错误
